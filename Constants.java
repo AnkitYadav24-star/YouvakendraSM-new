@@ -9,7 +9,7 @@ public class Constants {
     
     // GitHub repository details
     public static final String GITHUB_OWNER = "AnkitYadav24-star";
-    public static final String GITHUB_REPO = "YouvakendraSM";
+    public static final String GITHUB_REPO = "YouvakendraSM-new";
     
     // URLs for updates
     public static final String VERSION_URL = "https://raw.githubusercontent.com/" + GITHUB_OWNER + "/" + GITHUB_REPO + "/main/version.txt";
