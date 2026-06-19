@@ -49,7 +49,6 @@ if ($LASTEXITCODE -ne 0) {
 # 5. Save ZIP and clean up temporary files
 Write-Host "Saving standalone ZIP to dist folder..." -ForegroundColor Cyan
 Move-Item YouvakendraSM.zip dist\YouvakendraSM.zip -Force
-if (Test-Path Installer.cs) { Remove-Item Installer.cs -Force }
 
 Write-Host "==========================================================" -ForegroundColor Green
 Write-Host " Build Successful!" -ForegroundColor Green

@@ -6,22 +6,24 @@ import java.io.IOException;
 public class Constants {
     // Current application version fallback
     public static final String DEFAULT_CURRENT_VERSION = "1.0.0";
-    
+
     // GitHub repository details
     public static final String GITHUB_OWNER = "AnkitYadav24-star";
     public static final String GITHUB_REPO = "YouvakendraSM-new";
-    
+
     // URLs for updates
-    public static final String VERSION_URL = "https://raw.githubusercontent.com/" + GITHUB_OWNER + "/" + GITHUB_REPO + "/main/version.txt";
-    
+    public static final String VERSION_URL = "https://raw.githubusercontent.com/" + GITHUB_OWNER + "/" + GITHUB_REPO
+            + "/main/version.txt";
+
     // File names
     public static final String VERSION_FILE = "version.txt";
     public static final String RUN_BAT = "run.bat";
     public static final String UPDATE_INSTALLER_BAT = "update_installer.bat";
     public static final String UPDATE_ZIP_FILE = "YouvakendraSM_update.zip";
-    
+
     /**
-     * Gets the local version from version.txt. Falls back to DEFAULT_CURRENT_VERSION if not found or unreadable.
+     * Gets the local version from version.txt. Falls back to
+     * DEFAULT_CURRENT_VERSION if not found or unreadable.
      */
     public static String getLocalVersion() {
         File file = new File(VERSION_FILE);
