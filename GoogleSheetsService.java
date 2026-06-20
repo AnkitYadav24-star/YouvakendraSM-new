@@ -125,6 +125,154 @@ public class GoogleSheetsService {
         return records;
     }
 
+    public List<Course> readCourses() throws IOException, GeneralSecurityException {
+        Sheets service = getSheetsService();
+        String range = Config.COURSES_SHEET_NAME + "!A:B";
+        ValueRange response = service.spreadsheets().values()
+                .get(Config.SPREADSHEET_ID, range)
+                .execute();
+        List<List<Object>> values = response.getValues();
+        List<Course> courses = new ArrayList<>();
+
+        if (values == null || values.isEmpty()) {
+            return courses;
+        }
+
+        for (int i = 1; i < values.size(); i++) {
+            List<Object> row = values.get(i);
+            boolean isEmptyRow = true;
+            for (Object cell : row) {
+                if (cell != null && !cell.toString().trim().isEmpty()) {
+                    isEmptyRow = false;
+                    break;
+                }
+            }
+            if (isEmptyRow) {
+                continue;
+            }
+
+            String courseId = getSafeValue(row, 0);
+            String courseName = getSafeValue(row, 1);
+
+            courses.add(new Course(courseId, courseName));
+        }
+        return courses;
+    }
+
+    public List<Batch> readBatches() throws IOException, GeneralSecurityException {
+        Sheets service = getSheetsService();
+        String range = Config.BATCHES_SHEET_NAME + "!A:F";
+        ValueRange response = service.spreadsheets().values()
+                .get(Config.SPREADSHEET_ID, range)
+                .execute();
+        List<List<Object>> values = response.getValues();
+        List<Batch> batches = new ArrayList<>();
+
+        if (values == null || values.isEmpty()) {
+            return batches;
+        }
+
+        for (int i = 1; i < values.size(); i++) {
+            List<Object> row = values.get(i);
+            boolean isEmptyRow = true;
+            for (Object cell : row) {
+                if (cell != null && !cell.toString().trim().isEmpty()) {
+                    isEmptyRow = false;
+                    break;
+                }
+            }
+            if (isEmptyRow) {
+                continue;
+            }
+
+            String batchId = getSafeValue(row, 0);
+            String courseId = getSafeValue(row, 1);
+            String batchNo = getSafeValue(row, 2);
+            String startDate = getSafeValue(row, 3);
+            String endDate = getSafeValue(row, 4);
+            String batchTime = getSafeValue(row, 5);
+
+            batches.add(new Batch(batchId, courseId, batchNo, startDate, endDate, batchTime));
+        }
+        return batches;
+    }
+
+    public List<Company> readCompanies() throws IOException, GeneralSecurityException {
+        Sheets service = getSheetsService();
+        String range = Config.COMPANIES_SHEET_NAME + "!A:E";
+        ValueRange response = service.spreadsheets().values()
+                .get(Config.SPREADSHEET_ID, range)
+                .execute();
+        List<List<Object>> values = response.getValues();
+        List<Company> companies = new ArrayList<>();
+
+        if (values == null || values.isEmpty()) {
+            return companies;
+        }
+
+        for (int i = 1; i < values.size(); i++) {
+            List<Object> row = values.get(i);
+            boolean isEmptyRow = true;
+            for (Object cell : row) {
+                if (cell != null && !cell.toString().trim().isEmpty()) {
+                    isEmptyRow = false;
+                    break;
+                }
+            }
+            if (isEmptyRow) {
+                continue;
+            }
+
+            String companyId = getSafeValue(row, 0);
+            String companyName = getSafeValue(row, 1);
+            String hrName = getSafeValue(row, 2);
+            String companyAddress = getSafeValue(row, 3);
+            String contactInfo = getSafeValue(row, 4);
+
+            companies.add(new Company(companyId, companyName, hrName, companyAddress, contactInfo));
+        }
+        return companies;
+    }
+
+    public List<StudentPlacement> readPlacements() throws IOException, GeneralSecurityException {
+        Sheets service = getSheetsService();
+        String range = Config.PLACEMENTS_SHEET_NAME + "!A:G";
+        ValueRange response = service.spreadsheets().values()
+                .get(Config.SPREADSHEET_ID, range)
+                .execute();
+        List<List<Object>> values = response.getValues();
+        List<StudentPlacement> placements = new ArrayList<>();
+
+        if (values == null || values.isEmpty()) {
+            return placements;
+        }
+
+        for (int i = 1; i < values.size(); i++) {
+            List<Object> row = values.get(i);
+            boolean isEmptyRow = true;
+            for (Object cell : row) {
+                if (cell != null && !cell.toString().trim().isEmpty()) {
+                    isEmptyRow = false;
+                    break;
+                }
+            }
+            if (isEmptyRow) {
+                continue;
+            }
+
+            String placementId = getSafeValue(row, 0);
+            String studentId = getSafeValue(row, 1);
+            String erpNo = getSafeValue(row, 2);
+            String companyId = getSafeValue(row, 3);
+            String placementStatus = getSafeValue(row, 4);
+            String selectionDate = getSafeValue(row, 5);
+            String remark = getSafeValue(row, 6);
+
+            placements.add(new StudentPlacement(placementId, studentId, erpNo, companyId, placementStatus, selectionDate, remark));
+        }
+        return placements;
+    }
+
     private String getSafeValue(List<Object> row, int index) {
         if (index < row.size() && row.get(index) != null) {
             return row.get(index).toString().trim();

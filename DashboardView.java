@@ -59,9 +59,32 @@ public class DashboardView extends BorderPane {
     private VBox studentsPanel;
     private ScrollPane attendancePanel;
     private ScrollPane coursesPanel;
+    private ScrollPane batchesPanel;
+    private ScrollPane companiesPanel;
+    private ScrollPane placementsPanel;
     private ScrollPane reportsPanel;
     private ScrollPane usersPanel;
     private ScrollPane settingsPanel;
+
+    // Courses dynamic table data
+    private TableView<Course> coursesTable;
+    private final ObservableList<Course> coursesList = FXCollections.observableArrayList();
+    private VBox loadingOverlayCourses;
+
+    // Batches dynamic table data
+    private TableView<Batch> batchesTable;
+    private final ObservableList<Batch> batchesList = FXCollections.observableArrayList();
+    private VBox loadingOverlayBatches;
+
+    // Companies dynamic table data
+    private TableView<Company> companiesTable;
+    private final ObservableList<Company> companiesList = FXCollections.observableArrayList();
+    private VBox loadingOverlayCompanies;
+
+    // Placements dynamic table data
+    private TableView<StudentPlacement> placementsTable;
+    private final ObservableList<StudentPlacement> placementsList = FXCollections.observableArrayList();
+    private VBox loadingOverlayPlacements;
 
     // Metrics labels
     private Label lblTotalStudentsVal;
@@ -119,6 +142,9 @@ public class DashboardView extends BorderPane {
         buildStudentsPanel();
         buildAttendancePanel();
         buildCoursesPanel();
+        buildBatchesPanel();
+        buildCompaniesPanel();
+        buildPlacementsPanel();
         buildReportsPanel();
         buildUsersPanel();
         buildSettingsPanel();
@@ -130,6 +156,9 @@ public class DashboardView extends BorderPane {
                 studentsPanel,
                 attendancePanel,
                 coursesPanel,
+                batchesPanel,
+                companiesPanel,
+                placementsPanel,
                 reportsPanel,
                 usersPanel,
                 settingsPanel);
@@ -182,6 +211,12 @@ public class DashboardView extends BorderPane {
                         "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
                 { "Courses",
                         "M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 006.5 22H20M4 19.5V5A2.5 2.5 0 016.5 2.5H20v20H6.5" },
+                { "Batches",
+                        "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" },
+                { "Companies",
+                        "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m-1 4h1" },
+                { "Placements",
+                        "M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" },
                 { "Reports", "M18 20V10m-6 10V4M6 20v-6" },
                 { "Users",
                         "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2 M23 21v-2a4 4 0 00-3-3.87 M16 3.13a4 4 0 010 7.75" },
@@ -218,6 +253,19 @@ public class DashboardView extends BorderPane {
                         break;
                     case "Courses":
                         showPanel(coursesPanel);
+                        refreshCoursesData();
+                        break;
+                    case "Batches":
+                        showPanel(batchesPanel);
+                        refreshBatchesData();
+                        break;
+                    case "Companies":
+                        showPanel(companiesPanel);
+                        refreshCompaniesData();
+                        break;
+                    case "Placements":
+                        showPanel(placementsPanel);
+                        refreshPlacementsData();
                         break;
                     case "Reports":
                         showPanel(reportsPanel);
@@ -270,6 +318,9 @@ public class DashboardView extends BorderPane {
         studentsPanel.setVisible(false);
         attendancePanel.setVisible(false);
         coursesPanel.setVisible(false);
+        if (batchesPanel != null) batchesPanel.setVisible(false);
+        if (companiesPanel != null) companiesPanel.setVisible(false);
+        if (placementsPanel != null) placementsPanel.setVisible(false);
         reportsPanel.setVisible(false);
         usersPanel.setVisible(false);
         settingsPanel.setVisible(false);
@@ -1229,54 +1280,339 @@ public class DashboardView extends BorderPane {
         container.setPadding(new Insets(24));
         container.getStyleClass().add("root");
 
-        Label lblTitle = new Label("Institute Courses Directory");
+        Label lblTitle = new Label("Courses Directory");
         lblTitle.setStyle("-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: -text-main;");
 
         VBox contentBox = new VBox(15);
         contentBox.getStyleClass().add("content-card");
-        contentBox.setPrefHeight(400);
+        VBox.setVgrow(contentBox, Priority.ALWAYS);
 
-        Label cardTitle = new Label("Active Modules");
-        cardTitle.getStyleClass().add("card-title");
+        HBox bar = new HBox(15);
+        bar.setAlignment(Pos.CENTER_LEFT);
 
-        GridPane gp = new GridPane();
-        gp.setHgap(20);
-        gp.setVgap(15);
+        Label lblSubtitle = new Label("Dynamic Course List");
+        lblSubtitle.setStyle("-fx-font-weight: bold; -fx-text-fill: -text-muted; -fx-font-size: 14px;");
 
-        // Course 1
-        VBox c1 = createCourseDetailsCard("DM", "Digital Management", "3 Months",
-                "Detailed rules:\n- Requires 75% attendance.\n- Exam structured into 3 components.\n- Project submission due at completion.");
-        // Course 2
-        VBox c2 = createCourseDetailsCard("DTP", "Desk Top Publishing", "4 Months",
-                "Detailed rules:\n- Layout and publication designs.\n- Core typography exams.\n- Compilation of design portfolio is compulsory.");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        gp.add(c1, 0, 0);
-        gp.add(c2, 1, 0);
+        Button btnRefresh = new Button("Refresh Data 🔄");
+        btnRefresh.getStyleClass().addAll("btn", "btn-primary");
+        btnRefresh.setOnAction(e -> refreshCoursesData());
 
-        contentBox.getChildren().addAll(cardTitle, gp);
+        bar.getChildren().addAll(lblSubtitle, spacer, btnRefresh);
+
+        StackPane tableContainer = new StackPane();
+        VBox.setVgrow(tableContainer, Priority.ALWAYS);
+
+        coursesTable = new TableView<>();
+        coursesTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+
+        // Progress Overlay
+        loadingOverlayCourses = new VBox(15);
+        loadingOverlayCourses.setAlignment(Pos.CENTER);
+        loadingOverlayCourses.getStyleClass().add("loading-overlay");
+        ProgressIndicator progressIndicator = new ProgressIndicator();
+        progressIndicator.setStyle("-fx-progress-color: -primary-color;");
+        Label lblLoading = new Label("Loading courses from Google Sheets...");
+        lblLoading.getStyleClass().add("loading-text");
+        loadingOverlayCourses.getChildren().addAll(progressIndicator, lblLoading);
+        loadingOverlayCourses.setVisible(false);
+
+        tableContainer.getChildren().addAll(coursesTable, loadingOverlayCourses);
+
+        TableColumn<Course, String> colCourseId = new TableColumn<>("Course_ID");
+        colCourseId.setCellValueFactory(data -> data.getValue().courseIdProperty());
+        colCourseId.setPrefWidth(150);
+
+        TableColumn<Course, String> colCourseName = new TableColumn<>("Course_Name");
+        colCourseName.setCellValueFactory(data -> data.getValue().courseNameProperty());
+        colCourseName.setPrefWidth(300);
+
+        coursesTable.getColumns().addAll(colCourseId, colCourseName);
+        coursesTable.setItems(coursesList);
+
+        contentBox.getChildren().addAll(bar, tableContainer);
         container.getChildren().addAll(lblTitle, contentBox);
 
         coursesPanel = new ScrollPane(container);
         coursesPanel.setFitToWidth(true);
+        coursesPanel.setFitToHeight(true);
         coursesPanel.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
     }
 
-    private VBox createCourseDetailsCard(String code, String title, String dur, String details) {
-        VBox box = new VBox(12);
-        box.getStyleClass().add("course-details-card");
+    // --- PANEL 4A: BATCHES ---
+    private void buildBatchesPanel() {
+        VBox container = new VBox(20);
+        container.setPadding(new Insets(24));
+        container.getStyleClass().add("root");
 
-        Label lblCode = new Label(code + " - " + title);
-        lblCode.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: -primary-color;");
+        Label lblTitle = new Label("Batches Directory");
+        lblTitle.setStyle("-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: -text-main;");
 
-        Label lblDur = new Label("Duration: " + dur);
-        lblDur.setStyle("-fx-font-weight: bold; -fx-text-fill: -text-main;");
+        VBox contentBox = new VBox(15);
+        contentBox.getStyleClass().add("content-card");
+        VBox.setVgrow(contentBox, Priority.ALWAYS);
 
-        Label lblDet = new Label(details);
-        lblDet.setWrapText(true);
-        lblDet.setStyle("-fx-text-fill: -text-muted; -fx-font-size: 12px;");
+        HBox bar = new HBox(15);
+        bar.setAlignment(Pos.CENTER_LEFT);
 
-        box.getChildren().addAll(lblCode, lblDur, lblDet);
-        return box;
+        Label lblSubtitle = new Label("Dynamic Batch List");
+        lblSubtitle.setStyle("-fx-font-weight: bold; -fx-text-fill: -text-muted; -fx-font-size: 14px;");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Button btnRefresh = new Button("Refresh Data 🔄");
+        btnRefresh.getStyleClass().addAll("btn", "btn-primary");
+        btnRefresh.setOnAction(e -> refreshBatchesData());
+
+        bar.getChildren().addAll(lblSubtitle, spacer, btnRefresh);
+
+        StackPane tableContainer = new StackPane();
+        VBox.setVgrow(tableContainer, Priority.ALWAYS);
+
+        batchesTable = new TableView<>();
+        batchesTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+
+        // Progress Overlay
+        loadingOverlayBatches = new VBox(15);
+        loadingOverlayBatches.setAlignment(Pos.CENTER);
+        loadingOverlayBatches.getStyleClass().add("loading-overlay");
+        ProgressIndicator progressIndicator = new ProgressIndicator();
+        progressIndicator.setStyle("-fx-progress-color: -primary-color;");
+        Label lblLoading = new Label("Loading batches from Google Sheets...");
+        lblLoading.getStyleClass().add("loading-text");
+        loadingOverlayBatches.getChildren().addAll(progressIndicator, lblLoading);
+        loadingOverlayBatches.setVisible(false);
+
+        tableContainer.getChildren().addAll(batchesTable, loadingOverlayBatches);
+
+        TableColumn<Batch, String> colBatchId = new TableColumn<>("Batch_ID");
+        colBatchId.setCellValueFactory(data -> data.getValue().batchIdProperty());
+        colBatchId.setPrefWidth(100);
+
+        TableColumn<Batch, String> colCourseId = new TableColumn<>("Course_ID");
+        colCourseId.setCellValueFactory(data -> data.getValue().courseIdProperty());
+        colCourseId.setPrefWidth(100);
+
+        TableColumn<Batch, String> colBatchNo = new TableColumn<>("Batch_No");
+        colBatchNo.setCellValueFactory(data -> data.getValue().batchNoProperty());
+        colBatchNo.setPrefWidth(100);
+
+        TableColumn<Batch, String> colStartDate = new TableColumn<>("Start_Date");
+        colStartDate.setCellValueFactory(data -> data.getValue().startDateProperty());
+        colStartDate.setPrefWidth(120);
+
+        TableColumn<Batch, String> colEndDate = new TableColumn<>("End_Date");
+        colEndDate.setCellValueFactory(data -> data.getValue().endDateProperty());
+        colEndDate.setPrefWidth(120);
+
+        TableColumn<Batch, String> colBatchTime = new TableColumn<>("Batch_Time");
+        colBatchTime.setCellValueFactory(data -> data.getValue().batchTimeProperty());
+        colBatchTime.setPrefWidth(150);
+
+        batchesTable.getColumns().addAll(colBatchId, colCourseId, colBatchNo, colStartDate, colEndDate, colBatchTime);
+        batchesTable.setItems(batchesList);
+
+        contentBox.getChildren().addAll(bar, tableContainer);
+        container.getChildren().addAll(lblTitle, contentBox);
+
+        batchesPanel = new ScrollPane(container);
+        batchesPanel.setFitToWidth(true);
+        batchesPanel.setFitToHeight(true);
+        batchesPanel.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+    }
+
+    // --- PANEL 4B: COMPANIES ---
+    private void buildCompaniesPanel() {
+        VBox container = new VBox(20);
+        container.setPadding(new Insets(24));
+        container.getStyleClass().add("root");
+
+        Label lblTitle = new Label("Companies Directory");
+        lblTitle.setStyle("-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: -text-main;");
+
+        VBox contentBox = new VBox(15);
+        contentBox.getStyleClass().add("content-card");
+        VBox.setVgrow(contentBox, Priority.ALWAYS);
+
+        HBox bar = new HBox(15);
+        bar.setAlignment(Pos.CENTER_LEFT);
+
+        Label lblSubtitle = new Label("Registered HR & Company Contacts");
+        lblSubtitle.setStyle("-fx-font-weight: bold; -fx-text-fill: -text-muted; -fx-font-size: 14px;");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Button btnRefresh = new Button("Refresh Data 🔄");
+        btnRefresh.getStyleClass().addAll("btn", "btn-primary");
+        btnRefresh.setOnAction(e -> refreshCompaniesData());
+
+        bar.getChildren().addAll(lblSubtitle, spacer, btnRefresh);
+
+        StackPane tableContainer = new StackPane();
+        VBox.setVgrow(tableContainer, Priority.ALWAYS);
+
+        companiesTable = new TableView<>();
+        companiesTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+
+        // Progress Overlay
+        loadingOverlayCompanies = new VBox(15);
+        loadingOverlayCompanies.setAlignment(Pos.CENTER);
+        loadingOverlayCompanies.getStyleClass().add("loading-overlay");
+        ProgressIndicator progressIndicator = new ProgressIndicator();
+        progressIndicator.setStyle("-fx-progress-color: -primary-color;");
+        Label lblLoading = new Label("Loading companies from Google Sheets...");
+        lblLoading.getStyleClass().add("loading-text");
+        loadingOverlayCompanies.getChildren().addAll(progressIndicator, lblLoading);
+        loadingOverlayCompanies.setVisible(false);
+
+        tableContainer.getChildren().addAll(companiesTable, loadingOverlayCompanies);
+
+        TableColumn<Company, String> colCompanyId = new TableColumn<>("Company_ID");
+        colCompanyId.setCellValueFactory(data -> data.getValue().companyIdProperty());
+        colCompanyId.setPrefWidth(100);
+
+        TableColumn<Company, String> colCompanyName = new TableColumn<>("Company_Name");
+        colCompanyName.setCellValueFactory(data -> data.getValue().companyNameProperty());
+        colCompanyName.setPrefWidth(180);
+
+        TableColumn<Company, String> colHrName = new TableColumn<>("HR_Name");
+        colHrName.setCellValueFactory(data -> data.getValue().hrNameProperty());
+        colHrName.setPrefWidth(120);
+
+        TableColumn<Company, String> colCompanyAddress = new TableColumn<>("Company_Address");
+        colCompanyAddress.setCellValueFactory(data -> data.getValue().companyAddressProperty());
+        colCompanyAddress.setPrefWidth(220);
+
+        TableColumn<Company, String> colContactInfo = new TableColumn<>("Contact_Info");
+        colContactInfo.setCellValueFactory(data -> data.getValue().contactInfoProperty());
+        colContactInfo.setPrefWidth(150);
+
+        companiesTable.getColumns().addAll(colCompanyId, colCompanyName, colHrName, colCompanyAddress, colContactInfo);
+        companiesTable.setItems(companiesList);
+
+        contentBox.getChildren().addAll(bar, tableContainer);
+        container.getChildren().addAll(lblTitle, contentBox);
+
+        companiesPanel = new ScrollPane(container);
+        companiesPanel.setFitToWidth(true);
+        companiesPanel.setFitToHeight(true);
+        companiesPanel.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+    }
+
+    // --- PANEL 4C: STUDENT PLACEMENTS ---
+    private void buildPlacementsPanel() {
+        VBox container = new VBox(20);
+        container.setPadding(new Insets(24));
+        container.getStyleClass().add("root");
+
+        Label lblTitle = new Label("Student Placements");
+        lblTitle.setStyle("-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: -text-main;");
+
+        VBox contentBox = new VBox(15);
+        contentBox.getStyleClass().add("content-card");
+        VBox.setVgrow(contentBox, Priority.ALWAYS);
+
+        HBox bar = new HBox(15);
+        bar.setAlignment(Pos.CENTER_LEFT);
+
+        Label lblSubtitle = new Label("Placement Selection Logs");
+        lblSubtitle.setStyle("-fx-font-weight: bold; -fx-text-fill: -text-muted; -fx-font-size: 14px;");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Button btnRefresh = new Button("Refresh Data 🔄");
+        btnRefresh.getStyleClass().addAll("btn", "btn-primary");
+        btnRefresh.setOnAction(e -> refreshPlacementsData());
+
+        bar.getChildren().addAll(lblSubtitle, spacer, btnRefresh);
+
+        StackPane tableContainer = new StackPane();
+        VBox.setVgrow(tableContainer, Priority.ALWAYS);
+
+        placementsTable = new TableView<>();
+        placementsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+
+        // Progress Overlay
+        loadingOverlayPlacements = new VBox(15);
+        loadingOverlayPlacements.setAlignment(Pos.CENTER);
+        loadingOverlayPlacements.getStyleClass().add("loading-overlay");
+        ProgressIndicator progressIndicator = new ProgressIndicator();
+        progressIndicator.setStyle("-fx-progress-color: -primary-color;");
+        Label lblLoading = new Label("Loading placements from Google Sheets...");
+        lblLoading.getStyleClass().add("loading-text");
+        loadingOverlayPlacements.getChildren().addAll(progressIndicator, lblLoading);
+        loadingOverlayPlacements.setVisible(false);
+
+        tableContainer.getChildren().addAll(placementsTable, loadingOverlayPlacements);
+
+        TableColumn<StudentPlacement, String> colPlacementId = new TableColumn<>("Placement_ID");
+        colPlacementId.setCellValueFactory(data -> data.getValue().placementIdProperty());
+        colPlacementId.setPrefWidth(110);
+
+        TableColumn<StudentPlacement, String> colStudentId = new TableColumn<>("Student_ID");
+        colStudentId.setCellValueFactory(data -> data.getValue().studentIdProperty());
+        colStudentId.setPrefWidth(100);
+
+        TableColumn<StudentPlacement, String> colErpNo = new TableColumn<>("ERP_No");
+        colErpNo.setCellValueFactory(data -> data.getValue().erpNoProperty());
+        colErpNo.setPrefWidth(100);
+
+        TableColumn<StudentPlacement, String> colCompanyId = new TableColumn<>("Company_ID");
+        colCompanyId.setCellValueFactory(data -> data.getValue().companyIdProperty());
+        colCompanyId.setPrefWidth(100);
+
+        TableColumn<StudentPlacement, String> colPlacementStatus = new TableColumn<>("Placement_Status");
+        colPlacementStatus.setCellValueFactory(data -> data.getValue().placementStatusProperty());
+        colPlacementStatus.setPrefWidth(140);
+        colPlacementStatus.setCellFactory(column -> new TableCell<StudentPlacement, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    Label badge = new Label(item);
+                    badge.getStyleClass().add("status-badge");
+                    String lower = item.toLowerCase();
+                    if (lower.contains("select") || lower.contains("place") || lower.contains("pass") || lower.contains("active")) {
+                        badge.getStyleClass().add("status-active");
+                    } else if (lower.contains("pend") || lower.contains("wait")) {
+                        badge.getStyleClass().add("status-ready");
+                    } else if (lower.contains("reject") || lower.contains("fail")) {
+                        badge.getStyleClass().add("status-failed");
+                    } else {
+                        badge.getStyleClass().add("status-inactive");
+                    }
+                    setGraphic(badge);
+                    setText(null);
+                }
+            }
+        });
+
+        TableColumn<StudentPlacement, String> colSelectionDate = new TableColumn<>("Selection_Date");
+        colSelectionDate.setCellValueFactory(data -> data.getValue().selectionDateProperty());
+        colSelectionDate.setPrefWidth(120);
+
+        TableColumn<StudentPlacement, String> colRemark = new TableColumn<>("Remark");
+        colRemark.setCellValueFactory(data -> data.getValue().remarkProperty());
+        colRemark.setPrefWidth(180);
+
+        placementsTable.getColumns().addAll(colPlacementId, colStudentId, colErpNo, colCompanyId, colPlacementStatus, colSelectionDate, colRemark);
+        placementsTable.setItems(placementsList);
+
+        contentBox.getChildren().addAll(bar, tableContainer);
+        container.getChildren().addAll(lblTitle, contentBox);
+
+        placementsPanel = new ScrollPane(container);
+        placementsPanel.setFitToWidth(true);
+        placementsPanel.setFitToHeight(true);
+        placementsPanel.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
     }
 
     // --- PANEL 5: REPORTS ---
@@ -1557,6 +1893,198 @@ public class DashboardView extends BorderPane {
 
             showErrorAlert("Data Load Error",
                 "Failed to connect to Google Sheets Attendance Sheet",
+                "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace + "\n\nPlease check your network connection and credentials.");
+        });
+
+        new Thread(loadTask).start();
+    }
+
+    public void refreshCoursesData() {
+        if (loadingOverlayCourses.isVisible()) {
+            return;
+        }
+        loadingOverlayCourses.setVisible(true);
+        coursesTable.setDisable(true);
+
+        javafx.concurrent.Task<List<Course>> loadTask = new javafx.concurrent.Task<>() {
+            @Override
+            protected List<Course> call() throws Exception {
+                GoogleSheetsService service = new GoogleSheetsService();
+                return service.readCourses();
+            }
+        };
+
+        loadTask.setOnSucceeded(e -> {
+            List<Course> loaded = loadTask.getValue();
+            coursesList.clear();
+            coursesList.addAll(loaded);
+
+            loadingOverlayCourses.setVisible(false);
+            coursesTable.setDisable(false);
+            addActivity("🔄", "Refreshed " + loaded.size() + " courses from Google Sheets");
+        });
+
+        loadTask.setOnFailed(e -> {
+            Throwable ex = loadTask.getException();
+            ex.printStackTrace();
+
+            loadingOverlayCourses.setVisible(false);
+            coursesTable.setDisable(false);
+
+            java.io.StringWriter sw = new java.io.StringWriter();
+            java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+            ex.printStackTrace(pw);
+            String stackTrace = sw.toString();
+            if (stackTrace.length() > 800) {
+                stackTrace = stackTrace.substring(0, 800) + "\n...";
+            }
+
+            showErrorAlert("Data Load Error",
+                "Failed to connect to Google Sheets Courses Sheet",
+                "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace + "\n\nPlease check your network connection and credentials.");
+        });
+
+        new Thread(loadTask).start();
+    }
+
+    public void refreshBatchesData() {
+        if (loadingOverlayBatches.isVisible()) {
+            return;
+        }
+        loadingOverlayBatches.setVisible(true);
+        batchesTable.setDisable(true);
+
+        javafx.concurrent.Task<List<Batch>> loadTask = new javafx.concurrent.Task<>() {
+            @Override
+            protected List<Batch> call() throws Exception {
+                GoogleSheetsService service = new GoogleSheetsService();
+                return service.readBatches();
+            }
+        };
+
+        loadTask.setOnSucceeded(e -> {
+            List<Batch> loaded = loadTask.getValue();
+            batchesList.clear();
+            batchesList.addAll(loaded);
+
+            loadingOverlayBatches.setVisible(false);
+            batchesTable.setDisable(false);
+            addActivity("🔄", "Refreshed " + loaded.size() + " batches from Google Sheets");
+        });
+
+        loadTask.setOnFailed(e -> {
+            Throwable ex = loadTask.getException();
+            ex.printStackTrace();
+
+            loadingOverlayBatches.setVisible(false);
+            batchesTable.setDisable(false);
+
+            java.io.StringWriter sw = new java.io.StringWriter();
+            java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+            ex.printStackTrace(pw);
+            String stackTrace = sw.toString();
+            if (stackTrace.length() > 800) {
+                stackTrace = stackTrace.substring(0, 800) + "\n...";
+            }
+
+            showErrorAlert("Data Load Error",
+                "Failed to connect to Google Sheets Batches Sheet",
+                "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace + "\n\nPlease check your network connection and credentials.");
+        });
+
+        new Thread(loadTask).start();
+    }
+
+    public void refreshCompaniesData() {
+        if (loadingOverlayCompanies.isVisible()) {
+            return;
+        }
+        loadingOverlayCompanies.setVisible(true);
+        companiesTable.setDisable(true);
+
+        javafx.concurrent.Task<List<Company>> loadTask = new javafx.concurrent.Task<>() {
+            @Override
+            protected List<Company> call() throws Exception {
+                GoogleSheetsService service = new GoogleSheetsService();
+                return service.readCompanies();
+            }
+        };
+
+        loadTask.setOnSucceeded(e -> {
+            List<Company> loaded = loadTask.getValue();
+            companiesList.clear();
+            companiesList.addAll(loaded);
+
+            loadingOverlayCompanies.setVisible(false);
+            companiesTable.setDisable(false);
+            addActivity("🔄", "Refreshed " + loaded.size() + " companies from Google Sheets");
+        });
+
+        loadTask.setOnFailed(e -> {
+            Throwable ex = loadTask.getException();
+            ex.printStackTrace();
+
+            loadingOverlayCompanies.setVisible(false);
+            companiesTable.setDisable(false);
+
+            java.io.StringWriter sw = new java.io.StringWriter();
+            java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+            ex.printStackTrace(pw);
+            String stackTrace = sw.toString();
+            if (stackTrace.length() > 800) {
+                stackTrace = stackTrace.substring(0, 800) + "\n...";
+            }
+
+            showErrorAlert("Data Load Error",
+                "Failed to connect to Google Sheets Companies Sheet",
+                "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace + "\n\nPlease check your network connection and credentials.");
+        });
+
+        new Thread(loadTask).start();
+    }
+
+    public void refreshPlacementsData() {
+        if (loadingOverlayPlacements.isVisible()) {
+            return;
+        }
+        loadingOverlayPlacements.setVisible(true);
+        placementsTable.setDisable(true);
+
+        javafx.concurrent.Task<List<StudentPlacement>> loadTask = new javafx.concurrent.Task<>() {
+            @Override
+            protected List<StudentPlacement> call() throws Exception {
+                GoogleSheetsService service = new GoogleSheetsService();
+                return service.readPlacements();
+            }
+        };
+
+        loadTask.setOnSucceeded(e -> {
+            List<StudentPlacement> loaded = loadTask.getValue();
+            placementsList.clear();
+            placementsList.addAll(loaded);
+
+            loadingOverlayPlacements.setVisible(false);
+            placementsTable.setDisable(false);
+            addActivity("🔄", "Refreshed " + loaded.size() + " placements from Google Sheets");
+        });
+
+        loadTask.setOnFailed(e -> {
+            Throwable ex = loadTask.getException();
+            ex.printStackTrace();
+
+            loadingOverlayPlacements.setVisible(false);
+            placementsTable.setDisable(false);
+
+            java.io.StringWriter sw = new java.io.StringWriter();
+            java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+            ex.printStackTrace(pw);
+            String stackTrace = sw.toString();
+            if (stackTrace.length() > 800) {
+                stackTrace = stackTrace.substring(0, 800) + "\n...";
+            }
+
+            showErrorAlert("Data Load Error",
+                "Failed to connect to Google Sheets Student Placements Sheet",
                 "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace + "\n\nPlease check your network connection and credentials.");
         });
 
