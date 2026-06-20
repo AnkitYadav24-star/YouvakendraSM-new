@@ -200,7 +200,14 @@ public class UpdateDialog extends JDialog {
                             timer.setRepeats(false);
                             timer.start();
                         } else {
-                            showError("Extraction failed. Please try again later.");
+                            String errMessage = "Extraction failed. Please try again later.";
+                            if (AutoUpdater.lastExceptionMessage != null && !AutoUpdater.lastExceptionMessage.isEmpty()) {
+                                errMessage = "Extraction failed: " + AutoUpdater.lastExceptionMessage;
+                                if (AutoUpdater.lastFailedFilePath != null && !AutoUpdater.lastFailedFilePath.isEmpty()) {
+                                    errMessage += "\nFailed File Path: " + AutoUpdater.lastFailedFilePath;
+                                }
+                            }
+                            showError(errMessage);
                         }
                     });
                 }).start();
@@ -215,7 +222,8 @@ public class UpdateDialog extends JDialog {
 
     private void showError(String message) {
         statusLabel.setForeground(COLOR_DANGER);
-        statusLabel.setText("Error: " + message);
+        String formattedMsg = "<html>Error: " + message.replace("\n", "<br>") + "</html>";
+        statusLabel.setText(formattedMsg);
         progressBar.setIndeterminate(false);
         progressBar.setValue(0);
         progressBar.setForeground(COLOR_DANGER);

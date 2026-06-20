@@ -26,18 +26,21 @@ public class VersionChecker {
             connection.setRequestProperty("User-Agent", "YouvakendraSM-Updater");
 
             int responseCode = connection.getResponseCode();
+            AutoUpdater.logInfo("GitHub API check URL returned HTTP status: " + responseCode);
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
                     String inputLine = in.readLine();
                     if (inputLine != null) {
-                        return inputLine.trim();
+                        String ver = inputLine.trim();
+                        AutoUpdater.logInfo("GitHub API version response: " + ver);
+                        return ver;
                     }
                 }
             } else {
-                System.err.println("[Updater] Failed to fetch version. HTTP response code: " + responseCode);
+                AutoUpdater.logError("Failed to fetch version. HTTP response code: " + responseCode, null);
             }
         } catch (Exception e) {
-            System.err.println("[Updater] Error fetching latest version: " + e.getMessage());
+            AutoUpdater.logError("Error fetching latest version: " + e.getMessage(), e);
         } finally {
             if (connection != null) {
                 connection.disconnect();
@@ -107,10 +110,10 @@ public class VersionChecker {
                 }
 
                 String localVersion = Constants.getLocalVersion();
-                System.out.println("[Updater] Local Version: " + localVersion);
+                AutoUpdater.logInfo("Version check started. Local Version: " + localVersion);
                 
                 String latestVersion = fetchLatestVersion();
-                System.out.println("[Updater] Remote Version: " + latestVersion);
+                AutoUpdater.logInfo("Remote Version: " + latestVersion);
 
                 if (latestVersion != null) {
                     if (isNewerVersion(localVersion, latestVersion)) {
@@ -141,7 +144,7 @@ public class VersionChecker {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("[Updater] Exception during update check: " + e.getMessage());
+                AutoUpdater.logError("Exception during update check: " + e.getMessage(), e);
             }
         }).start();
     }
