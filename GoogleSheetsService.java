@@ -29,7 +29,7 @@ public class GoogleSheetsService {
 
     public List<Student> readStudents() throws IOException, GeneralSecurityException {
         Sheets service = getSheetsService();
-        String range = Config.SHEET_NAME + "!A:M";
+        String range = Config.SHEET_NAME + "!A:N";
         ValueRange response = service.spreadsheets().values()
                 .get(Config.SPREADSHEET_ID, range)
                 .execute();
@@ -70,10 +70,11 @@ public class GoogleSheetsService {
             String doj = getSafeValue(row, 10);
             String courseDuration = getSafeValue(row, 11);
             String status = getSafeValue(row, 12);
+            String courseId = getSafeValue(row, 13);
 
             students.add(Student.createFromSheets(
                     studentId, erpNo, studentName, fatherName, dob, address,
-                    course, center, batchId, batchTime, doj, courseDuration, status));
+                    course, center, batchId, batchTime, doj, courseDuration, status, courseId));
         }
 
         return students;
@@ -81,7 +82,7 @@ public class GoogleSheetsService {
 
     public List<Attendance> getAttendanceRecords() throws IOException, GeneralSecurityException {
         Sheets service = getSheetsService();
-        String range = Config.ATTENDANCE_SHEET_NAME + "!A:G";
+        String range = Config.ATTENDANCE_SHEET_NAME + "!A:H";
         ValueRange response = service.spreadsheets().values()
                 .get(Config.SPREADSHEET_ID, range)
                 .execute();
@@ -116,9 +117,10 @@ public class GoogleSheetsService {
             String status = getSafeValue(row, 4);
             String markedBy = getSafeValue(row, 5);
             String markedTime = getSafeValue(row, 6);
+            String courseId = getSafeValue(row, 7);
 
             records.add(new Attendance(
-                attendanceId, date, studentId, batchId, status, markedBy, markedTime
+                attendanceId, date, studentId, batchId, status, markedBy, markedTime, courseId
             ));
         }
 
@@ -309,7 +311,7 @@ public class GoogleSheetsService {
 
     public List<TrainerProfile> readTrainerProfiles() throws IOException, GeneralSecurityException {
         Sheets service = getSheetsService();
-        String range = Config.TRAINERS_SHEET_NAME + "!A:F";
+        String range = Config.TRAINERS_SHEET_NAME + "!A:G";
         ValueRange response = service.spreadsheets().values()
                 .get(Config.SPREADSHEET_ID, range)
                 .execute();
@@ -329,7 +331,8 @@ public class GoogleSheetsService {
             String center = getSafeValue(row, 3);
             String designation = getSafeValue(row, 4);
             String password = getSafeValue(row, 5);
-            profiles.add(new TrainerProfile(id, name, picUrl, center, designation, password));
+            String courseId = getSafeValue(row, 6);
+            profiles.add(new TrainerProfile(id, name, picUrl, center, designation, password, courseId));
         }
         return profiles;
     }
@@ -361,7 +364,7 @@ public class GoogleSheetsService {
 
     public void addStudent(Student s) throws IOException, GeneralSecurityException {
         Sheets service = getSheetsService();
-        String range = Config.SHEET_NAME + "!A:M";
+        String range = Config.SHEET_NAME + "!A:N";
         List<Object> row = List.of(
             s.getStudentId(),
             s.getErpNo(),
@@ -375,7 +378,8 @@ public class GoogleSheetsService {
             s.getBatchTime(),
             s.getDoj(),
             s.getCourseDuration(),
-            s.getStatus()
+            s.getStatus(),
+            s.getCourseId()
         );
         ValueRange body = new ValueRange().setValues(List.of(row));
         service.spreadsheets().values().append(Config.SPREADSHEET_ID, range, body)
@@ -385,7 +389,7 @@ public class GoogleSheetsService {
 
     public void updateStudent(Student s) throws IOException, GeneralSecurityException {
         Sheets service = getSheetsService();
-        String range = Config.SHEET_NAME + "!A:M";
+        String range = Config.SHEET_NAME + "!A:N";
         ValueRange response = service.spreadsheets().values()
                 .get(Config.SPREADSHEET_ID, range)
                 .execute();
@@ -405,7 +409,7 @@ public class GoogleSheetsService {
             throw new IOException("Student not found in sheet: " + s.getStudentId());
         }
         
-        String updateRange = Config.SHEET_NAME + "!A" + rowIndex + ":M" + rowIndex;
+        String updateRange = Config.SHEET_NAME + "!A" + rowIndex + ":N" + rowIndex;
         List<Object> rowData = List.of(
             s.getStudentId(),
             s.getErpNo(),
@@ -419,7 +423,8 @@ public class GoogleSheetsService {
             s.getBatchTime(),
             s.getDoj(),
             s.getCourseDuration(),
-            s.getStatus()
+            s.getStatus(),
+            s.getCourseId()
         );
         ValueRange body = new ValueRange().setValues(List.of(rowData));
         service.spreadsheets().values().update(Config.SPREADSHEET_ID, updateRange, body)
@@ -429,7 +434,7 @@ public class GoogleSheetsService {
 
     public void deleteStudent(String studentId) throws IOException, GeneralSecurityException {
         Sheets service = getSheetsService();
-        String range = Config.SHEET_NAME + "!A:M";
+        String range = Config.SHEET_NAME + "!A:N";
         ValueRange response = service.spreadsheets().values()
                 .get(Config.SPREADSHEET_ID, range)
                 .execute();

@@ -284,7 +284,8 @@ public class LoginView extends StackPane {
                                     trainer.getTrainerPictureUrl(),
                                     trainer.getCenter(),
                                     trainer.getDesignation(),
-                                    "");
+                                    "",
+                                    trainer.getCourseId());
                         }
                     }
                 } else if (selectedRole == LoggedInUser.Role.STUDENT) {
@@ -304,12 +305,14 @@ public class LoginView extends StackPane {
                         String studentName = "Student User";
                         String center = "";
                         String course = "";
+                        String courseId = "";
                         for (Student s : students) {
                             if (matchedLogin.getStudentId().equalsIgnoreCase(s.getStudentId())
                                     || matchedLogin.getErpNo().equalsIgnoreCase(s.getErpNo())) {
                                 studentName = s.getStudentName();
                                 center = s.getCenter();
                                 course = s.getCourse();
+                                courseId = s.getCourseId();
                                 break;
                             }
                         }
@@ -320,7 +323,8 @@ public class LoginView extends StackPane {
                                 matchedLogin.getImageUrl(),
                                 center,
                                 "Course: " + course,
-                                matchedLogin.getErpNo());
+                                matchedLogin.getErpNo(),
+                                courseId);
                     }
                 }
                 throw new Exception("Invalid User ID, ERP Number, or Password.");

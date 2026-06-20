@@ -8,6 +8,7 @@ public class Attendance {
     private String status;
     private String markedBy;
     private String markedTime;
+    private String courseId = "";
 
     private final SimpleStringProperty attendanceIdProp = new SimpleStringProperty();
     private final SimpleStringProperty dateProp = new SimpleStringProperty();
@@ -16,9 +17,10 @@ public class Attendance {
     private final SimpleStringProperty statusProp = new SimpleStringProperty();
     private final SimpleStringProperty markedByProp = new SimpleStringProperty();
     private final SimpleStringProperty markedTimeProp = new SimpleStringProperty();
+    private final SimpleStringProperty courseIdProp = new SimpleStringProperty();
 
     public Attendance(String attendanceId, String date, String studentId, String batchId,
-                      String status, String markedBy, String markedTime) {
+                      String status, String markedBy, String markedTime, String courseId) {
         setAttendanceId(attendanceId);
         setDate(date);
         setStudentId(studentId);
@@ -26,6 +28,12 @@ public class Attendance {
         setStatus(status);
         setMarkedBy(markedBy);
         setMarkedTime(markedTime);
+        setCourseId(courseId);
+    }
+
+    public Attendance(String attendanceId, String date, String studentId, String batchId,
+                      String status, String markedBy, String markedTime) {
+        this(attendanceId, date, studentId, batchId, status, markedBy, markedTime, "");
     }
 
     // Getters, Setters, and Properties
@@ -56,4 +64,8 @@ public class Attendance {
     public String getMarkedTime() { return markedTime; }
     public void setMarkedTime(String value) { this.markedTime = value; this.markedTimeProp.set(value); }
     public SimpleStringProperty markedTimeProperty() { return markedTimeProp; }
+
+    public String getCourseId() { return courseId; }
+    public void setCourseId(String value) { this.courseId = value; this.courseIdProp.set(value); }
+    public SimpleStringProperty courseIdProperty() { return courseIdProp; }
 }

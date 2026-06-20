@@ -118,6 +118,7 @@ public class DashboardView extends BorderPane {
     private Button btnDelete;
     private Button btnClear;
     private Label lblFormMessage;
+    private ComboBox<Student> cbEditorStudentSelect;
 
     // Student TableView
     private TableView<Student> studentTable;
@@ -144,6 +145,8 @@ public class DashboardView extends BorderPane {
             this.currentRole = "Admin";
         } else if (user.getRole() == LoggedInUser.Role.TRAINER) {
             this.currentRole = "Trainer";
+        } else if (user.getRole() == LoggedInUser.Role.STUDENT) {
+            this.currentRole = "Student";
         } else {
             this.currentRole = "Viewer";
         }
@@ -342,9 +345,12 @@ public class DashboardView extends BorderPane {
         studentsPanel.setVisible(false);
         attendancePanel.setVisible(false);
         coursesPanel.setVisible(false);
-        if (batchesPanel != null) batchesPanel.setVisible(false);
-        if (companiesPanel != null) companiesPanel.setVisible(false);
-        if (placementsPanel != null) placementsPanel.setVisible(false);
+        if (batchesPanel != null)
+            batchesPanel.setVisible(false);
+        if (companiesPanel != null)
+            companiesPanel.setVisible(false);
+        if (placementsPanel != null)
+            placementsPanel.setVisible(false);
         reportsPanel.setVisible(false);
         usersPanel.setVisible(false);
         settingsPanel.setVisible(false);
@@ -361,9 +367,13 @@ public class DashboardView extends BorderPane {
 
         // Search box
         txtSearch = new TextField();
-        txtSearch.setPromptText("Search students by name, ID, course...");
+        txtSearch.setPromptText("Search by Name, ERP No, Batch ID, Batch Time...");
         txtSearch.getStyleClass().add("search-field");
         txtSearch.setPrefWidth(350);
+
+        Button btnHeaderRefresh = new Button("🔄 Refresh All");
+        btnHeaderRefresh.getStyleClass().addAll("btn", "btn-secondary");
+        btnHeaderRefresh.setOnAction(e -> refreshAllData());
 
         // Dynamic search binding
         txtSearch.textProperty().addListener((observable, oldValue, newValue) -> {
@@ -372,11 +382,10 @@ public class DashboardView extends BorderPane {
                     return true;
                 }
                 String lower = newValue.toLowerCase();
-                return student.getId().toLowerCase().contains(lower)
-                        || student.getName().toLowerCase().contains(lower)
-                        || student.getCourse().toLowerCase().contains(lower)
-                        || student.getBatch().toLowerCase().contains(lower)
-                        || student.getStatus().toLowerCase().contains(lower);
+                return (student.getErpNo() != null && student.getErpNo().toLowerCase().contains(lower))
+                        || (student.getName() != null && student.getName().toLowerCase().contains(lower))
+                        || (student.getBatchId() != null && student.getBatchId().toLowerCase().contains(lower))
+                        || (student.getBatchTime() != null && student.getBatchTime().toLowerCase().contains(lower));
             });
         });
 
@@ -409,7 +418,7 @@ public class DashboardView extends BorderPane {
         StackPane avatarPane = new StackPane();
         Circle avatarBg = new Circle(18);
         avatarBg.getStyleClass().add("avatar-circle");
-        
+
         String initialChar = "A";
         if (loggedInUser != null && loggedInUser.getName() != null && !loggedInUser.getName().isEmpty()) {
             initialChar = loggedInUser.getName().substring(0, 1).toUpperCase();
@@ -428,7 +437,7 @@ public class DashboardView extends BorderPane {
                 imgView.setPreserveRatio(true);
                 Circle clip = new Circle(18, 18, 18);
                 imgView.setClip(clip);
-                
+
                 img.progressProperty().addListener((obs, oldVal, newVal) -> {
                     if (newVal.doubleValue() == 1.0 && !img.isError()) {
                         txtAvatarChar.setVisible(false);
@@ -458,12 +467,7 @@ public class DashboardView extends BorderPane {
 
         // Hide role selector for non-admins
         boolean isAdminUser = loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.ADMIN;
-        lblRoleSelectText.setVisible(isAdminUser);
-        lblRoleSelectText.setManaged(isAdminUser);
-        cbRoleSelector.setVisible(isAdminUser);
-        cbRoleSelector.setManaged(isAdminUser);
-
-        header.getChildren().addAll(txtSearch, spacer, btnNotification, lblRoleSelectText, cbRoleSelector, profileBox);
+        header.getChildren().addAll(txtSearch, btnHeaderRefresh, spacer, profileBox);
         return header;
     }
 
@@ -475,16 +479,19 @@ public class DashboardView extends BorderPane {
         String displayRole = role;
         String displayName = "Viewer Account";
         if (loggedInUser != null) {
-            String loggedInRoleStr = loggedInUser.getRole() == LoggedInUser.Role.ADMIN ? "Admin" : 
-                                    (loggedInUser.getRole() == LoggedInUser.Role.TRAINER ? "Trainer" : "Viewer");
+            String loggedInRoleStr = loggedInUser.getRole() == LoggedInUser.Role.ADMIN ? "Admin"
+                    : (loggedInUser.getRole() == LoggedInUser.Role.TRAINER ? "Trainer" 
+                    : (loggedInUser.getRole() == LoggedInUser.Role.STUDENT ? "Student" : "Viewer"));
             if (loggedInRoleStr.equals(role)) {
                 displayName = loggedInUser.getName();
             } else {
                 displayName = role + " View";
             }
         } else {
-            if ("Admin".equals(role)) displayName = "Admin User";
-            else if ("Trainer".equals(role)) displayName = "Trainer Staff";
+            if ("Admin".equals(role))
+                displayName = "Admin User";
+            else if ("Trainer".equals(role))
+                displayName = "Trainer Staff";
         }
 
         lblHeaderUserName.setText(displayName);
@@ -496,6 +503,10 @@ public class DashboardView extends BorderPane {
             lblHeaderRoleBadge.getStyleClass().add("role-badge-trainer");
             lblHeaderRoleBadge.setText("Trainer");
             txtAvatarChar.setText("T");
+        } else if ("Student".equals(role)) {
+            lblHeaderRoleBadge.getStyleClass().add("role-badge-viewer");
+            lblHeaderRoleBadge.setText("Student");
+            txtAvatarChar.setText("S");
         } else {
             lblHeaderRoleBadge.getStyleClass().add("role-badge-viewer");
             lblHeaderRoleBadge.setText("Viewer");
@@ -509,27 +520,26 @@ public class DashboardView extends BorderPane {
     private void applyRolePermissions(String role) {
         boolean isAdmin = "Admin".equals(role);
         boolean isTrainer = "Trainer".equals(role);
-        boolean isViewer = "Viewer".equals(role);
+        boolean isViewer = "Viewer".equals(role) || "Student".equals(role);
 
-        // Apply to student form fields
-        txtName.setDisable(isTrainer || isViewer);
-        txtFatherName.setDisable(isTrainer || isViewer);
-        txtMotherName.setDisable(isTrainer || isViewer);
-        txtMobile.setDisable(isTrainer || isViewer);
-        txtAltMobile.setDisable(isTrainer || isViewer);
-        txtEmail.setDisable(isTrainer || isViewer);
-        txtAddress.setDisable(isTrainer || isViewer);
+        // Apply to student form fields - Trainer and Admin can edit
+        txtName.setDisable(isViewer);
+        txtFatherName.setDisable(isViewer);
+        txtMotherName.setDisable(isViewer);
+        txtMobile.setDisable(isViewer);
+        txtAltMobile.setDisable(isViewer);
+        txtEmail.setDisable(isViewer);
+        txtAddress.setDisable(isViewer);
 
-        // Trainer can edit course/batch/status and date (for registration
-        // support/attendance check)
+        // Trainer and Admin can edit course/batch/status and date
         cbCourse.setDisable(isViewer);
         cbBatch.setDisable(isViewer);
         dpAdmissionDate.setDisable(isViewer);
         cbStatus.setDisable(isViewer);
 
         // Buttons configuration
-        btnAdd.setDisable(!isAdmin); // Only Admin adds new
-        btnDelete.setDisable(!isAdmin); // Only Admin deletes
+        btnAdd.setDisable(!isAdmin && !isTrainer); // Admin and Trainer can add
+        btnDelete.setDisable(!isAdmin && !isTrainer); // Admin and Trainer can delete
         btnUpdate.setDisable(isViewer); // Admin and Trainer can update
         btnClear.setDisable(isViewer);
 
@@ -775,10 +785,12 @@ public class DashboardView extends BorderPane {
         String todayStrISO = LocalDate.now().toString(); // e.g. "2026-06-20"
 
         long presentCount = attendanceList.stream()
-                .filter(a -> (todayStrFormatted.equalsIgnoreCase(a.getDate()) || todayStrISO.equals(a.getDate())) && "Present".equalsIgnoreCase(a.getStatus()))
+                .filter(a -> (todayStrFormatted.equalsIgnoreCase(a.getDate()) || todayStrISO.equals(a.getDate()))
+                        && "Present".equalsIgnoreCase(a.getStatus()))
                 .count();
         long absentCount = attendanceList.stream()
-                .filter(a -> (todayStrFormatted.equalsIgnoreCase(a.getDate()) || todayStrISO.equals(a.getDate())) && "Absent".equalsIgnoreCase(a.getStatus()))
+                .filter(a -> (todayStrFormatted.equalsIgnoreCase(a.getDate()) || todayStrISO.equals(a.getDate()))
+                        && "Absent".equalsIgnoreCase(a.getStatus()))
                 .count();
 
         // Fallback to latest date in the attendance sheet if no records for today exist
@@ -813,10 +825,43 @@ public class DashboardView extends BorderPane {
             @Override
             protected Void call() throws Exception {
                 GoogleSheetsService service = new GoogleSheetsService();
+                List<Course> loadedCourses = service.readCourses();
                 List<Student> loadedStudents = service.readStudents();
                 List<Attendance> loadedAttendance = service.getAttendanceRecords();
 
                 javafx.application.Platform.runLater(() -> {
+                    coursesList.clear();
+                    coursesList.addAll(loadedCourses);
+
+                    String trainerCourse = getTrainerCourseId();
+                    if (loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.STUDENT) {
+                        loadedStudents.removeIf(s -> !loggedInUser.getId().equalsIgnoreCase(s.getId()));
+                        
+                        // Filter courses list so student only sees their own course
+                        coursesList.removeIf(c -> {
+                            String scId = loggedInUser.getCourseId();
+                            if (scId != null && !scId.trim().isEmpty()) {
+                                return !scId.equalsIgnoreCase(c.getCourseId());
+                            }
+                            String des = loggedInUser.getDesignation();
+                            if (des != null && des.contains(": ")) {
+                                String cName = des.substring(des.indexOf(": ") + 2).trim();
+                                return !cName.equalsIgnoreCase(c.getCourseName());
+                            }
+                            return true;
+                        });
+                    } else if (trainerCourse != null) {
+                        loadedStudents.removeIf(s -> {
+                            String scId = s.getCourseId();
+                            if (scId != null && !scId.trim().isEmpty()) {
+                                return !trainerCourse.equalsIgnoreCase(scId.trim());
+                            }
+                            return !trainerCourse.equalsIgnoreCase(s.getCourse());
+                        });
+                        // Filter courses list so trainer only sees their course
+                        coursesList.removeIf(c -> !trainerCourse.equalsIgnoreCase(c.getCourseId()));
+                    }
+
                     studentsList.clear();
                     studentsList.addAll(loadedStudents);
 
@@ -829,10 +874,28 @@ public class DashboardView extends BorderPane {
                                 if (num > maxIdNum) {
                                     maxIdNum = num;
                                 }
-                            } catch (NumberFormatException ignored) {}
+                            } catch (NumberFormatException ignored) {
+                            }
                         }
                     }
                     nextStudentIdNum = maxIdNum + 1;
+
+                    if (loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.STUDENT) {
+                        loadedAttendance.removeIf(a -> !loggedInUser.getId().equalsIgnoreCase(a.getStudentId()));
+                    } else if (trainerCourse != null) {
+                        loadedAttendance.removeIf(a -> {
+                            String acId = a.getCourseId();
+                            if (acId != null && !acId.trim().isEmpty()) {
+                                return !trainerCourse.equalsIgnoreCase(acId.trim());
+                            }
+                            for (Student s : studentsList) {
+                                if (s.getId().equalsIgnoreCase(a.getStudentId())) {
+                                    return false;
+                                }
+                            }
+                            return true;
+                        });
+                    }
 
                     attendanceList.clear();
                     attendanceList.addAll(loadedAttendance);
@@ -884,6 +947,8 @@ public class DashboardView extends BorderPane {
 
         Button btnManageStudents = new Button("Manage Students ⚙️");
         btnManageStudents.getStyleClass().addAll("btn", "btn-primary");
+        btnManageStudents.setVisible(loggedInUser != null && (loggedInUser.getRole() == LoggedInUser.Role.ADMIN || loggedInUser.getRole() == LoggedInUser.Role.TRAINER));
+        btnManageStudents.setManaged(loggedInUser != null && (loggedInUser.getRole() == LoggedInUser.Role.ADMIN || loggedInUser.getRole() == LoggedInUser.Role.TRAINER));
         btnManageStudents.setOnAction(e -> openStudentEditorModal());
 
         tableHeaderBar.getChildren().addAll(lblTableTitle, toolbarSpacer, btnManageStudents);
@@ -893,7 +958,7 @@ public class DashboardView extends BorderPane {
 
         studentTable = new TableView<>();
         studentTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-        
+
         // Progress Overlay
         loadingOverlay = new VBox(15);
         loadingOverlay.setAlignment(Pos.CENTER);
@@ -997,7 +1062,8 @@ public class DashboardView extends BorderPane {
             }
         });
 
-        studentTable.getColumns().addAll(colId, colErpNo, colName, colFatherName, colDob, colAddress, colCourse, colCenter, colBatchId, colBatchTime, colDoj, colCourseDuration, colStatus);
+        studentTable.getColumns().addAll(colId, colErpNo, colName, colFatherName, colDob, colAddress, colCourse,
+                colCenter, colBatchId, colBatchTime, colDoj, colCourseDuration, colStatus);
         studentTable.setItems(filteredStudents);
 
         tableBox.getChildren().addAll(tableHeaderBar, tableContainer);
@@ -1009,6 +1075,93 @@ public class DashboardView extends BorderPane {
 
         Label lblFormTitle = new Label("Student Details Editor");
         lblFormTitle.getStyleClass().add("card-title");
+
+        // Selector toolbar at top
+        HBox selectorBar = new HBox(10);
+        selectorBar.setAlignment(Pos.CENTER_LEFT);
+        selectorBar.setStyle(
+                "-fx-padding: 0 0 10 0; -fx-border-color: transparent transparent -border-color transparent; -fx-border-width: 0 0 1 0;");
+
+        TextField txtEditorSearch = new TextField();
+        txtEditorSearch.setPromptText("Search Name / ERP / ID");
+        txtEditorSearch.getStyleClass().add("text-input");
+        txtEditorSearch.setPrefWidth(140);
+
+        cbEditorStudentSelect = new ComboBox<>();
+        cbEditorStudentSelect.setPromptText("Select Student");
+        cbEditorStudentSelect.setPrefWidth(160);
+        cbEditorStudentSelect.getStyleClass().add("combo-box");
+
+        cbEditorStudentSelect.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(Student s, boolean empty) {
+                super.updateItem(s, empty);
+                if (empty || s == null) {
+                    setText(null);
+                } else {
+                    setText(s.getName() + " (" + s.getId() + ")");
+                }
+            }
+        });
+        cbEditorStudentSelect.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(Student s, boolean empty) {
+                super.updateItem(s, empty);
+                if (empty || s == null) {
+                    setText("Select Student");
+                } else {
+                    setText(s.getName() + " (" + s.getId() + ")");
+                }
+            }
+        });
+
+        txtEditorSearch.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == null || newVal.trim().isEmpty()) {
+                cbEditorStudentSelect.setItems(studentsList);
+            } else {
+                String search = newVal.toLowerCase();
+                ObservableList<Student> matches = FXCollections.observableArrayList();
+                for (Student s : studentsList) {
+                    if ((s.getName() != null && s.getName().toLowerCase().contains(search))
+                            || (s.getId() != null && s.getId().toLowerCase().contains(search))
+                            || (s.getErpNo() != null && s.getErpNo().toLowerCase().contains(search))) {
+                        matches.add(s);
+                    }
+                }
+                cbEditorStudentSelect.setItems(matches);
+            }
+            cbEditorStudentSelect.show();
+        });
+
+        cbEditorStudentSelect.valueProperty().addListener((obs, oldSel, newSel) -> {
+            if (newSel != null) {
+                studentTable.getSelectionModel().select(newSel);
+                populateForm(newSel);
+                btnAdd.setDisable(true);
+                if (!"Viewer".equals(currentRole)) {
+                    btnUpdate.setDisable(false);
+                    btnDelete.setDisable(!"Admin".equals(currentRole) && !"Trainer".equals(currentRole));
+                }
+            }
+        });
+
+        Button btnSelectStudent = new Button("Select");
+        btnSelectStudent.getStyleClass().addAll("btn", "btn-primary");
+        btnSelectStudent.setOnAction(e -> {
+            Student selected = cbEditorStudentSelect.getValue();
+            if (selected != null) {
+                studentTable.getSelectionModel().select(selected);
+                populateForm(selected);
+                btnAdd.setDisable(true);
+                if (!"Viewer".equals(currentRole)) {
+                    btnUpdate.setDisable(false);
+                    btnDelete.setDisable(!"Admin".equals(currentRole) && !"Trainer".equals(currentRole));
+                }
+            }
+        });
+
+        selectorBar.getChildren().addAll(new Label("Find student:"), txtEditorSearch, cbEditorStudentSelect,
+                btnSelectStudent);
 
         ScrollPane formScroll = new ScrollPane();
         formScroll.setFitToWidth(true);
@@ -1139,7 +1292,7 @@ public class DashboardView extends BorderPane {
 
         btnBox.getChildren().addAll(btnAdd, btnUpdate, btnDelete, btnClear);
 
-        formBox.getChildren().addAll(lblFormTitle, formScroll, lblFormMessage, btnBox);
+        formBox.getChildren().addAll(lblFormTitle, selectorBar, formScroll, lblFormMessage, btnBox);
 
         bodyLayout.getChildren().add(tableBox);
         studentsPanel.getChildren().addAll(lblTitle, bodyLayout);
@@ -1167,7 +1320,7 @@ public class DashboardView extends BorderPane {
         LocalDate admDate = dpAdmissionDate.getValue();
 
         if (course != null && admDate != null) {
-            int durationMonths = "DTP".equals(course) ? 4 : 3;
+            int durationMonths = (course.equalsIgnoreCase("DTP") || course.toUpperCase().contains("DTP")) ? 4 : 3;
             LocalDate completion = admDate.plusMonths(durationMonths);
             lblCompletionDate.setText(completion.format(DATE_FORMATTER));
         } else {
@@ -1183,7 +1336,12 @@ public class DashboardView extends BorderPane {
         txtMobile.setText(s.getMobile());
         txtAltMobile.setText(s.getAltMobile());
         txtEmail.setText(s.getEmail());
-        cbCourse.setValue(s.getCourse());
+        String scId = s.getCourseId();
+        if (scId != null && !scId.trim().isEmpty()) {
+            cbCourse.setValue(scId.trim());
+        } else {
+            cbCourse.setValue(s.getCourse());
+        }
         cbBatch.setValue(s.getBatch());
 
         try {
@@ -1228,6 +1386,16 @@ public class DashboardView extends BorderPane {
             return;
 
         String id = String.format("ST%04d", nextStudentIdNum);
+        String selectedCourseId = cbCourse.getValue();
+        String courseName = selectedCourseId;
+        if (coursesList != null) {
+            for (Course c : coursesList) {
+                if (c.getCourseId().equalsIgnoreCase(selectedCourseId)) {
+                    courseName = c.getCourseName();
+                    break;
+                }
+            }
+        }
         Student s = new Student(
                 id,
                 txtName.getText().trim(),
@@ -1237,12 +1405,13 @@ public class DashboardView extends BorderPane {
                 txtAltMobile.getText().trim(),
                 txtEmail.getText().trim(),
                 txtAddress.getText().trim(),
-                cbCourse.getValue(),
+                courseName,
                 cbBatch.getValue(),
                 dpAdmissionDate.getValue().format(DATE_FORMATTER),
                 lblCompletionDate.getText(),
                 cbStatus.getValue());
-        s.setErpNo(""); 
+        s.setErpNo("");
+        s.setCourseId(selectedCourseId);
 
         formBox.setDisable(true);
         lblFormMessage.setText("Saving to Google Sheets...");
@@ -1291,7 +1460,17 @@ public class DashboardView extends BorderPane {
             return;
 
         String id = selected.getId();
-        
+        String selectedCourseId = cbCourse.getValue();
+        String courseName = selectedCourseId;
+        if (coursesList != null) {
+            for (Course c : coursesList) {
+                if (c.getCourseId().equalsIgnoreCase(selectedCourseId)) {
+                    courseName = c.getCourseName();
+                    break;
+                }
+            }
+        }
+
         Student s = new Student(
                 id,
                 txtName.getText().trim(),
@@ -1301,7 +1480,7 @@ public class DashboardView extends BorderPane {
                 txtAltMobile.getText().trim(),
                 txtEmail.getText().trim(),
                 txtAddress.getText().trim(),
-                cbCourse.getValue(),
+                courseName,
                 cbBatch.getValue(),
                 dpAdmissionDate.getValue().format(DATE_FORMATTER),
                 lblCompletionDate.getText(),
@@ -1309,6 +1488,7 @@ public class DashboardView extends BorderPane {
         s.setErpNo(selected.getErpNo());
         s.setCenter(selected.getCenter());
         s.setDob(selected.getDob());
+        s.setCourseId(selectedCourseId);
 
         formBox.setDisable(true);
         lblFormMessage.setText("Updating in Google Sheets...");
@@ -1337,7 +1517,8 @@ public class DashboardView extends BorderPane {
             selected.setAdmissionDate(s.getAdmissionDate());
             selected.setCompletionDate(s.getCompletionDate());
             selected.setStatus(s.getStatus());
-            
+            selected.setCourseId(s.getCourseId());
+
             studentTable.refresh();
             addActivity("📝", "Updated details for: " + selected.getName() + " (" + selected.getId() + ")");
             clearFormSelection();
@@ -1484,7 +1665,8 @@ public class DashboardView extends BorderPane {
 
         tableContainer.getChildren().addAll(attendanceTable, loadingOverlayAttendance);
 
-        // Setup columns in the exact order requested: Attendance_ID, Date, Student_ID, Batch_ID, Status, Marked_By, Marked_Time
+        // Setup columns in the exact order requested: Attendance_ID, Date, Student_ID,
+        // Batch_ID, Status, Marked_By, Marked_Time
         TableColumn<Attendance, String> colAttId = new TableColumn<>("Attendance_ID");
         colAttId.setCellValueFactory(data -> data.getValue().attendanceIdProperty());
         colAttId.setPrefWidth(120);
@@ -1539,7 +1721,8 @@ public class DashboardView extends BorderPane {
         colMarkedTime.setCellValueFactory(data -> data.getValue().markedTimeProperty());
         colMarkedTime.setPrefWidth(180);
 
-        attendanceTable.getColumns().addAll(colAttId, colDate, colStudentId, colBatchId, colStatus, colMarkedBy, colMarkedTime);
+        attendanceTable.getColumns().addAll(colAttId, colDate, colStudentId, colBatchId, colStatus, colMarkedBy,
+                colMarkedTime);
         attendanceTable.setItems(attendanceList);
 
         contentBox.getChildren().addAll(bar, tableContainer);
@@ -1573,11 +1756,17 @@ public class DashboardView extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
+        Button btnManageCourses = new Button("Manage Courses ⚙️");
+        btnManageCourses.getStyleClass().addAll("btn", "btn-secondary");
+        btnManageCourses.setVisible(loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.ADMIN);
+        btnManageCourses.setManaged(loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.ADMIN);
+        btnManageCourses.setOnAction(e -> openCoursesEditorModal());
+
         Button btnRefresh = new Button("Refresh Data 🔄");
         btnRefresh.getStyleClass().addAll("btn", "btn-primary");
         btnRefresh.setOnAction(e -> refreshCoursesData());
 
-        bar.getChildren().addAll(lblSubtitle, spacer, btnRefresh);
+        bar.getChildren().addAll(lblSubtitle, spacer, btnManageCourses, btnRefresh);
 
         StackPane tableContainer = new StackPane();
         VBox.setVgrow(tableContainer, Priority.ALWAYS);
@@ -1640,11 +1829,17 @@ public class DashboardView extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
+        Button btnManageBatches = new Button("Manage Batches ⚙️");
+        btnManageBatches.getStyleClass().addAll("btn", "btn-secondary");
+        btnManageBatches.setVisible(loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.ADMIN);
+        btnManageBatches.setManaged(loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.ADMIN);
+        btnManageBatches.setOnAction(e -> openBatchesEditorModal());
+
         Button btnRefresh = new Button("Refresh Data 🔄");
         btnRefresh.getStyleClass().addAll("btn", "btn-primary");
         btnRefresh.setOnAction(e -> refreshBatchesData());
 
-        bar.getChildren().addAll(lblSubtitle, spacer, btnRefresh);
+        bar.getChildren().addAll(lblSubtitle, spacer, btnManageBatches, btnRefresh);
 
         StackPane tableContainer = new StackPane();
         VBox.setVgrow(tableContainer, Priority.ALWAYS);
@@ -1723,11 +1918,17 @@ public class DashboardView extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
+        Button btnManageCompanies = new Button("Manage Companies ⚙️");
+        btnManageCompanies.getStyleClass().addAll("btn", "btn-secondary");
+        btnManageCompanies.setVisible(loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.ADMIN);
+        btnManageCompanies.setManaged(loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.ADMIN);
+        btnManageCompanies.setOnAction(e -> openCompaniesEditorModal());
+
         Button btnRefresh = new Button("Refresh Data 🔄");
         btnRefresh.getStyleClass().addAll("btn", "btn-primary");
         btnRefresh.setOnAction(e -> refreshCompaniesData());
 
-        bar.getChildren().addAll(lblSubtitle, spacer, btnRefresh);
+        bar.getChildren().addAll(lblSubtitle, spacer, btnManageCompanies, btnRefresh);
 
         StackPane tableContainer = new StackPane();
         VBox.setVgrow(tableContainer, Priority.ALWAYS);
@@ -1802,11 +2003,17 @@ public class DashboardView extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
+        Button btnManagePlacements = new Button("Manage Placements ⚙️");
+        btnManagePlacements.getStyleClass().addAll("btn", "btn-secondary");
+        btnManagePlacements.setVisible(loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.ADMIN);
+        btnManagePlacements.setManaged(loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.ADMIN);
+        btnManagePlacements.setOnAction(e -> openPlacementsEditorModal());
+
         Button btnRefresh = new Button("Refresh Data 🔄");
         btnRefresh.getStyleClass().addAll("btn", "btn-primary");
         btnRefresh.setOnAction(e -> refreshPlacementsData());
 
-        bar.getChildren().addAll(lblSubtitle, spacer, btnRefresh);
+        bar.getChildren().addAll(lblSubtitle, spacer, btnManagePlacements, btnRefresh);
 
         StackPane tableContainer = new StackPane();
         VBox.setVgrow(tableContainer, Priority.ALWAYS);
@@ -1857,7 +2064,8 @@ public class DashboardView extends BorderPane {
                     Label badge = new Label(item);
                     badge.getStyleClass().add("status-badge");
                     String lower = item.toLowerCase();
-                    if (lower.contains("select") || lower.contains("place") || lower.contains("pass") || lower.contains("active")) {
+                    if (lower.contains("select") || lower.contains("place") || lower.contains("pass")
+                            || lower.contains("active")) {
                         badge.getStyleClass().add("status-active");
                     } else if (lower.contains("pend") || lower.contains("wait")) {
                         badge.getStyleClass().add("status-ready");
@@ -1880,7 +2088,8 @@ public class DashboardView extends BorderPane {
         colRemark.setCellValueFactory(data -> data.getValue().remarkProperty());
         colRemark.setPrefWidth(180);
 
-        placementsTable.getColumns().addAll(colPlacementId, colStudentId, colErpNo, colCompanyId, colPlacementStatus, colSelectionDate, colRemark);
+        placementsTable.getColumns().addAll(colPlacementId, colStudentId, colErpNo, colCompanyId, colPlacementStatus,
+                colSelectionDate, colRemark);
         placementsTable.setItems(placementsList);
 
         contentBox.getChildren().addAll(bar, tableContainer);
@@ -2089,6 +2298,20 @@ public class DashboardView extends BorderPane {
 
         loadTask.setOnSucceeded(e -> {
             List<Student> loaded = loadTask.getValue();
+
+            String trainerCourse = getTrainerCourseId();
+            if (loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.STUDENT) {
+                loaded.removeIf(s -> !loggedInUser.getId().equalsIgnoreCase(s.getId()));
+            } else if (trainerCourse != null) {
+                loaded.removeIf(s -> {
+                    String scId = s.getCourseId();
+                    if (scId != null && !scId.trim().isEmpty()) {
+                        return !trainerCourse.equalsIgnoreCase(scId.trim());
+                    }
+                    return !trainerCourse.equalsIgnoreCase(s.getCourse());
+                });
+            }
+
             studentsList.clear();
             studentsList.addAll(loaded);
 
@@ -2101,7 +2324,8 @@ public class DashboardView extends BorderPane {
                         if (num > maxIdNum) {
                             maxIdNum = num;
                         }
-                    } catch (NumberFormatException ignored) {}
+                    } catch (NumberFormatException ignored) {
+                    }
                 }
             }
             nextStudentIdNum = maxIdNum + 1;
@@ -2135,8 +2359,9 @@ public class DashboardView extends BorderPane {
             }
 
             showErrorAlert("Data Load Error",
-                "Failed to connect to Google Sheets",
-                "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace + "\n\nPlease check your network connection and credentials.");
+                    "Failed to connect to Google Sheets",
+                    "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace
+                            + "\n\nPlease check your network connection and credentials.");
         });
 
         new Thread(loadTask).start();
@@ -2159,6 +2384,25 @@ public class DashboardView extends BorderPane {
 
         loadTask.setOnSucceeded(e -> {
             List<Attendance> loaded = loadTask.getValue();
+
+            String trainerCourse = getTrainerCourseId();
+            if (loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.STUDENT) {
+                loaded.removeIf(a -> !loggedInUser.getId().equalsIgnoreCase(a.getStudentId()));
+            } else if (trainerCourse != null) {
+                loaded.removeIf(a -> {
+                    String acId = a.getCourseId();
+                    if (acId != null && !acId.trim().isEmpty()) {
+                        return !trainerCourse.equalsIgnoreCase(acId.trim());
+                    }
+                    for (Student s : studentsList) {
+                        if (s.getId().equalsIgnoreCase(a.getStudentId())) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+            }
+
             attendanceList.clear();
             attendanceList.addAll(loaded);
 
@@ -2183,8 +2427,9 @@ public class DashboardView extends BorderPane {
             }
 
             showErrorAlert("Data Load Error",
-                "Failed to connect to Google Sheets Attendance Sheet",
-                "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace + "\n\nPlease check your network connection and credentials.");
+                    "Failed to connect to Google Sheets Attendance Sheet",
+                    "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace
+                            + "\n\nPlease check your network connection and credentials.");
         });
 
         new Thread(loadTask).start();
@@ -2207,6 +2452,25 @@ public class DashboardView extends BorderPane {
 
         loadTask.setOnSucceeded(e -> {
             List<Course> loaded = loadTask.getValue();
+
+            String trainerCourse = getTrainerCourseId();
+            if (loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.STUDENT) {
+                loaded.removeIf(c -> {
+                    String scId = loggedInUser.getCourseId();
+                    if (scId != null && !scId.trim().isEmpty()) {
+                        return !scId.equalsIgnoreCase(c.getCourseId());
+                    }
+                    String des = loggedInUser.getDesignation();
+                    if (des != null && des.contains(": ")) {
+                        String cName = des.substring(des.indexOf(": ") + 2).trim();
+                        return !cName.equalsIgnoreCase(c.getCourseName());
+                    }
+                    return true;
+                });
+            } else if (trainerCourse != null) {
+                loaded.removeIf(c -> !trainerCourse.equalsIgnoreCase(c.getCourseId()));
+            }
+
             coursesList.clear();
             coursesList.addAll(loaded);
 
@@ -2231,8 +2495,9 @@ public class DashboardView extends BorderPane {
             }
 
             showErrorAlert("Data Load Error",
-                "Failed to connect to Google Sheets Courses Sheet",
-                "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace + "\n\nPlease check your network connection and credentials.");
+                    "Failed to connect to Google Sheets Courses Sheet",
+                    "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace
+                            + "\n\nPlease check your network connection and credentials.");
         });
 
         new Thread(loadTask).start();
@@ -2255,6 +2520,17 @@ public class DashboardView extends BorderPane {
 
         loadTask.setOnSucceeded(e -> {
             List<Batch> loaded = loadTask.getValue();
+
+            String trainerCourse = getTrainerCourseId();
+            if (loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.STUDENT) {
+                String studentBatchId = getStudentBatchId();
+                if (studentBatchId != null && !studentBatchId.isEmpty()) {
+                    loaded.removeIf(b -> !studentBatchId.equalsIgnoreCase(b.getBatchId()));
+                }
+            } else if (trainerCourse != null) {
+                loaded.removeIf(b -> !trainerCourse.equalsIgnoreCase(b.getCourseId()));
+            }
+
             batchesList.clear();
             batchesList.addAll(loaded);
 
@@ -2279,8 +2555,9 @@ public class DashboardView extends BorderPane {
             }
 
             showErrorAlert("Data Load Error",
-                "Failed to connect to Google Sheets Batches Sheet",
-                "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace + "\n\nPlease check your network connection and credentials.");
+                    "Failed to connect to Google Sheets Batches Sheet",
+                    "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace
+                            + "\n\nPlease check your network connection and credentials.");
         });
 
         new Thread(loadTask).start();
@@ -2327,8 +2604,9 @@ public class DashboardView extends BorderPane {
             }
 
             showErrorAlert("Data Load Error",
-                "Failed to connect to Google Sheets Companies Sheet",
-                "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace + "\n\nPlease check your network connection and credentials.");
+                    "Failed to connect to Google Sheets Companies Sheet",
+                    "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace
+                            + "\n\nPlease check your network connection and credentials.");
         });
 
         new Thread(loadTask).start();
@@ -2351,6 +2629,23 @@ public class DashboardView extends BorderPane {
 
         loadTask.setOnSucceeded(e -> {
             List<StudentPlacement> loaded = loadTask.getValue();
+
+            String trainerCourse = getTrainerCourseId();
+            if (loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.STUDENT) {
+                loaded.removeIf(p -> !loggedInUser.getId().equalsIgnoreCase(p.getStudentId())
+                        && !loggedInUser.getErpNo().equalsIgnoreCase(p.getErpNo()));
+            } else if (trainerCourse != null) {
+                loaded.removeIf(p -> {
+                    for (Student s : studentsList) {
+                        if (s.getId().equalsIgnoreCase(p.getStudentId())
+                                || s.getErpNo().equalsIgnoreCase(p.getErpNo())) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+            }
+
             placementsList.clear();
             placementsList.addAll(loaded);
 
@@ -2375,8 +2670,9 @@ public class DashboardView extends BorderPane {
             }
 
             showErrorAlert("Data Load Error",
-                "Failed to connect to Google Sheets Student Placements Sheet",
-                "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace + "\n\nPlease check your network connection and credentials.");
+                    "Failed to connect to Google Sheets Student Placements Sheet",
+                    "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace
+                            + "\n\nPlease check your network connection and credentials.");
         });
 
         new Thread(loadTask).start();
@@ -2402,6 +2698,10 @@ public class DashboardView extends BorderPane {
         formBox.setPrefWidth(450);
         formBox.setMaxWidth(Double.MAX_VALUE);
 
+        if (cbEditorStudentSelect != null) {
+            cbEditorStudentSelect.setItems(studentsList);
+        }
+
         VBox modalLayout = new VBox(formBox);
         modalLayout.setPadding(new Insets(10));
         modalLayout.getStyleClass().add("root");
@@ -2411,7 +2711,8 @@ public class DashboardView extends BorderPane {
         if (cssFile.exists()) {
             try {
                 scene.getStylesheets().add(cssFile.toURI().toURL().toExternalForm());
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
         editorModalStage.setScene(scene);
         editorModalStage.setResizable(true);
@@ -2435,7 +2736,7 @@ public class DashboardView extends BorderPane {
         Circle picBg = new Circle(50, Color.web("#F1F5F9"));
         picBg.setStroke(Color.web("#CBD5E1"));
         picBg.setStrokeWidth(2);
-        
+
         String initialChar = "A";
         if (loggedInUser != null && loggedInUser.getName() != null && !loggedInUser.getName().isEmpty()) {
             initialChar = loggedInUser.getName().substring(0, 1).toUpperCase();
@@ -2495,12 +2796,16 @@ public class DashboardView extends BorderPane {
         }
 
         info.add(new Label("Center:"), 0, 4);
-        Label lblCenter = new Label(loggedInUser != null && loggedInUser.getCenter() != null && !loggedInUser.getCenter().isEmpty() ? loggedInUser.getCenter() : "N/A");
+        Label lblCenter = new Label(
+                loggedInUser != null && loggedInUser.getCenter() != null && !loggedInUser.getCenter().isEmpty()
+                        ? loggedInUser.getCenter()
+                        : "N/A");
         lblCenter.setStyle("-fx-font-weight: bold;");
         info.add(lblCenter, 1, 4);
 
         info.add(new Label("Designation:"), 0, 5);
-        Label lblDesig = new Label(loggedInUser != null && loggedInUser.getDesignation() != null && !loggedInUser.getDesignation().isEmpty() ? loggedInUser.getDesignation() : "N/A");
+        Label lblDesig = new Label(loggedInUser != null && loggedInUser.getDesignation() != null
+                && !loggedInUser.getDesignation().isEmpty() ? loggedInUser.getDesignation() : "N/A");
         lblDesig.setStyle("-fx-font-weight: bold;");
         info.add(lblDesig, 1, 5);
 
@@ -2513,21 +2818,1485 @@ public class DashboardView extends BorderPane {
             }
         });
 
+        Button btnImageIcon = new Button("🖼️");
+        btnImageIcon.setStyle(
+                "-fx-font-size: 14px; -fx-padding: 4 8; -fx-background-color: rgba(255,255,255,0.7); -fx-background-radius: 12;");
+        btnImageIcon.setCursor(javafx.scene.Cursor.HAND);
+        StackPane.setAlignment(btnImageIcon, Pos.BOTTOM_RIGHT);
+        picPane.getChildren().add(btnImageIcon);
+
+        btnImageIcon.setOnAction(e -> {
+            if (loggedInUser != null && loggedInUser.getPictureUrl() != null
+                    && !loggedInUser.getPictureUrl().isEmpty()) {
+                Stage photoStage = new Stage();
+                photoStage.initOwner(popup);
+                photoStage.initModality(Modality.APPLICATION_MODAL);
+                photoStage.setTitle(loggedInUser.getName() + " - Photo");
+
+                VBox photoLayout = new VBox(15);
+                photoLayout.setAlignment(Pos.CENTER);
+                photoLayout.setPadding(new Insets(15));
+                photoLayout.setStyle("-fx-background-color: #0F172A;");
+
+                javafx.scene.image.ImageView fullImgView = new javafx.scene.image.ImageView();
+                javafx.scene.image.Image img = new javafx.scene.image.Image(loggedInUser.getPictureUrl(), true);
+                fullImgView.setImage(img);
+                fullImgView.setFitWidth(400);
+                fullImgView.setFitHeight(400);
+                fullImgView.setPreserveRatio(true);
+
+                Button btnClosePhoto = new Button("Close");
+                btnClosePhoto.getStyleClass().addAll("btn", "btn-secondary");
+                btnClosePhoto.setOnAction(event -> photoStage.close());
+
+                photoLayout.getChildren().addAll(fullImgView, btnClosePhoto);
+
+                Scene photoScene = new Scene(photoLayout);
+                java.io.File fileCss = new java.io.File("styles.css");
+                if (fileCss.exists()) {
+                    try {
+                        photoScene.getStylesheets().add(fileCss.toURI().toURL().toExternalForm());
+                    } catch (Exception ignored) {
+                    }
+                }
+                photoStage.setScene(photoScene);
+                photoStage.showAndWait();
+            }
+        });
+
+        HBox actionBox = new HBox(15);
+        actionBox.setAlignment(Pos.CENTER);
+
         Button btnClose = new Button("Close Profile");
         btnClose.getStyleClass().addAll("btn", "btn-secondary");
         btnClose.setOnAction(e -> popup.close());
 
-        layout.getChildren().addAll(picPane, info, btnClose);
+        Button btnLogout = new Button("Logout");
+        btnLogout.getStyleClass().addAll("btn", "btn-danger");
+        btnLogout.setOnAction(e -> {
+            popup.close();
+            try {
+                Scene currentScene = this.getScene();
+                Stage stage = (Stage) currentScene.getWindow();
+
+                LoginView loginRoot = new LoginView(user -> {
+                    try {
+                        DashboardView dashboardRoot = new DashboardView(user);
+                        stage.getScene().setRoot(dashboardRoot);
+                        stage.setMinWidth(1200);
+                        stage.setMinHeight(650);
+                        stage.setWidth(1250);
+                        stage.setHeight(720);
+                        stage.centerOnScreen();
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                });
+
+                currentScene.setRoot(loginRoot);
+                stage.setTitle("YouvakendraSM - Login");
+                stage.setMinWidth(500);
+                stage.setMinHeight(600);
+                stage.setWidth(600);
+                stage.setHeight(650);
+                stage.centerOnScreen();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        });
+
+        actionBox.getChildren().addAll(btnClose, btnLogout);
+
+        layout.getChildren().addAll(picPane, info, actionBox);
 
         Scene scene = new Scene(layout, 380, 420);
         java.io.File cssFile = new java.io.File("styles.css");
         if (cssFile.exists()) {
             try {
                 scene.getStylesheets().add(cssFile.toURI().toURL().toExternalForm());
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
         popup.setScene(scene);
         popup.setResizable(false);
         popup.showAndWait();
+    }
+
+    private String getTrainerCourseId() {
+        if (loggedInUser == null || loggedInUser.getRole() != LoggedInUser.Role.TRAINER) {
+            return null;
+        }
+        String userCourseId = loggedInUser.getCourseId();
+        if (userCourseId != null && !userCourseId.trim().isEmpty()) {
+            return userCourseId.trim();
+        }
+        String desig = loggedInUser.getDesignation();
+        if (desig == null || desig.isEmpty()) {
+            return null;
+        }
+
+        // If coursesList is already populated, check if any course ID is in the
+        // designation
+        if (coursesList != null && !coursesList.isEmpty()) {
+            for (Course course : coursesList) {
+                String cId = course.getCourseId();
+                if (cId != null && !cId.isEmpty()) {
+                    String regex = "\\b" + java.util.regex.Pattern.quote(cId) + "\\b";
+                    java.util.regex.Pattern p = java.util.regex.Pattern.compile(regex,
+                            java.util.regex.Pattern.CASE_INSENSITIVE);
+                    if (p.matcher(desig).find()) {
+                        return cId;
+                    }
+                }
+            }
+            // containment check fallback
+            for (Course course : coursesList) {
+                String cId = course.getCourseId();
+                if (cId != null && !cId.isEmpty()) {
+                    if (desig.toLowerCase().contains(cId.toLowerCase())) {
+                        return cId;
+                    }
+                }
+            }
+        }
+
+        // tokenization fallback, excluding common role/designation words
+        List<String> exclusions = List.of("trainer", "teacher", "instructor", "staff", "admin", "viewer", "center", "designation", "professor", "faculty", "youvakendra");
+        String[] tokens = desig.split("[\\s\\-_,:/]+");
+        for (String token : tokens) {
+            if (token.length() >= 2 && token.length() <= 8) {
+                if (token.matches("[A-Za-z0-9]+") && !exclusions.contains(token.toLowerCase())) {
+                    return token.toUpperCase();
+                }
+            }
+        }
+
+        return desig;
+    }
+
+    private String getStudentBatchId() {
+        if (loggedInUser == null || loggedInUser.getRole() != LoggedInUser.Role.STUDENT) {
+            return null;
+        }
+        for (Student s : studentsList) {
+            if (s.getId().equalsIgnoreCase(loggedInUser.getId())) {
+                return s.getBatchId();
+            }
+        }
+        return null;
+    }
+
+    private void refreshAllData() {
+        fetchDataForDashboard();
+        fetchStudentsFromGoogleSheets();
+        refreshCoursesData();
+        refreshBatchesData();
+        refreshCompaniesData();
+        refreshPlacementsData();
+    }
+
+    private void openCoursesEditorModal() {
+        Stage modalStage = new Stage();
+        modalStage.initOwner(this.getScene().getWindow());
+        modalStage.initModality(Modality.APPLICATION_MODAL);
+        modalStage.setTitle("Course Manager");
+
+        VBox layout = new VBox(15);
+        layout.setPadding(new Insets(20));
+        layout.getStyleClass().add("content-card");
+        layout.setStyle("-fx-background-color: -bg-app; -fx-pref-width: 420px;");
+
+        Label lblTitle = new Label("Course Details Editor");
+        lblTitle.getStyleClass().add("card-title");
+
+        HBox selectorRow = new HBox(10);
+        selectorRow.setAlignment(Pos.CENTER_LEFT);
+        Label lblSelect = new Label("Select Course:");
+        lblSelect.getStyleClass().add("form-label");
+        ComboBox<Course> cbSelect = new ComboBox<>();
+        cbSelect.setPromptText("Choose Course to Edit/Delete");
+        cbSelect.setItems(coursesList);
+        cbSelect.setPrefWidth(220);
+        cbSelect.getStyleClass().add("combo-box");
+        cbSelect.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(Course c, boolean empty) {
+                super.updateItem(c, empty);
+                setText((empty || c == null) ? null : c.getCourseName() + " (" + c.getCourseId() + ")");
+            }
+        });
+        cbSelect.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(Course c, boolean empty) {
+                super.updateItem(c, empty);
+                setText((empty || c == null) ? "Choose Course to Edit/Delete"
+                        : c.getCourseName() + " (" + c.getCourseId() + ")");
+            }
+        });
+        selectorRow.getChildren().addAll(lblSelect, cbSelect);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(10, 0, 10, 0));
+
+        Label lblId = new Label("Course ID:");
+        lblId.getStyleClass().add("form-label");
+        TextField txtId = new TextField();
+        txtId.setPromptText("e.g. DM");
+        txtId.getStyleClass().add("text-input");
+        grid.add(lblId, 0, 0);
+        grid.add(txtId, 1, 0);
+
+        Label lblName = new Label("Course Name:");
+        lblName.getStyleClass().add("form-label");
+        TextField txtName = new TextField();
+        txtName.setPromptText("e.g. Digital Marketing");
+        txtName.getStyleClass().add("text-input");
+        grid.add(lblName, 0, 1);
+        grid.add(txtName, 1, 1);
+
+        Label lblMsg = new Label();
+        lblMsg.setStyle("-fx-font-weight: bold;");
+
+        HBox btnBox = new HBox(8);
+        btnBox.setAlignment(Pos.CENTER);
+        btnBox.setPadding(new Insets(10, 0, 0, 0));
+
+        Button btnAdd = new Button("Add");
+        btnAdd.getStyleClass().addAll("btn", "btn-primary");
+
+        Button btnUpdate = new Button("Update");
+        btnUpdate.getStyleClass().addAll("btn", "btn-success");
+        btnUpdate.setDisable(true);
+
+        Button btnDelete = new Button("Delete");
+        btnDelete.getStyleClass().addAll("btn", "btn-danger");
+        btnDelete.setDisable(true);
+
+        Button btnClear = new Button("Clear");
+        btnClear.getStyleClass().addAll("btn", "btn-secondary");
+
+        Button btnClose = new Button("Close");
+        btnClose.getStyleClass().addAll("btn", "btn-secondary");
+        btnClose.setOnAction(e -> modalStage.close());
+
+        btnBox.getChildren().addAll(btnAdd, btnUpdate, btnDelete, btnClear, btnClose);
+
+        cbSelect.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                txtId.setText(newVal.getCourseId());
+                txtId.setEditable(false);
+                txtId.setDisable(true);
+                txtName.setText(newVal.getCourseName());
+                btnAdd.setDisable(true);
+                btnUpdate.setDisable(false);
+                btnDelete.setDisable(false);
+            }
+        });
+
+        Runnable resetForm = () -> {
+            cbSelect.setValue(null);
+            txtId.clear();
+            txtId.setEditable(true);
+            txtId.setDisable(false);
+            txtName.clear();
+            btnAdd.setDisable(false);
+            btnUpdate.setDisable(true);
+            btnDelete.setDisable(true);
+            lblMsg.setText("");
+        };
+        btnClear.setOnAction(e -> resetForm.run());
+
+        btnAdd.setOnAction(e -> {
+            String cid = txtId.getText().trim();
+            String cname = txtName.getText().trim();
+            if (cid.isEmpty() || cname.isEmpty()) {
+                lblMsg.setText("Fields cannot be empty.");
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+                return;
+            }
+            for (Course course : coursesList) {
+                if (course.getCourseId().equalsIgnoreCase(cid)) {
+                    lblMsg.setText("Course ID already exists!");
+                    lblMsg.setStyle("-fx-text-fill: -danger-color;");
+                    return;
+                }
+            }
+
+            layout.setDisable(true);
+            lblMsg.setText("Adding course...");
+            lblMsg.setStyle("-fx-text-fill: -primary-color;");
+
+            Course newCourse = new Course(cid, cname);
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    new GoogleSheetsService().addCourse(newCourse);
+                    return null;
+                }
+            };
+            task.setOnSucceeded(event -> {
+                layout.setDisable(false);
+                coursesList.add(newCourse);
+                addActivity("➕",
+                        "Added new course: " + newCourse.getCourseName() + " (" + newCourse.getCourseId() + ")");
+                resetForm.run();
+                lblMsg.setText("Course added successfully.");
+                lblMsg.setStyle("-fx-text-fill: -success-color;");
+                refreshCoursesData();
+            });
+            task.setOnFailed(event -> {
+                layout.setDisable(false);
+                Throwable t = task.getException();
+                lblMsg.setText("Failed: " + t.getMessage());
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+            });
+            new Thread(task).start();
+        });
+
+        btnUpdate.setOnAction(e -> {
+            Course selected = cbSelect.getValue();
+            if (selected == null)
+                return;
+            String cname = txtName.getText().trim();
+            if (cname.isEmpty()) {
+                lblMsg.setText("Course Name cannot be empty.");
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+                return;
+            }
+
+            layout.setDisable(true);
+            lblMsg.setText("Updating course...");
+            lblMsg.setStyle("-fx-text-fill: -primary-color;");
+
+            Course updatedCourse = new Course(selected.getCourseId(), cname);
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    new GoogleSheetsService().updateCourse(updatedCourse);
+                    return null;
+                }
+            };
+            task.setOnSucceeded(event -> {
+                layout.setDisable(false);
+                selected.setCourseName(cname);
+                addActivity("📝", "Updated course: " + cname + " (" + selected.getCourseId() + ")");
+                resetForm.run();
+                lblMsg.setText("Course updated successfully.");
+                lblMsg.setStyle("-fx-text-fill: -success-color;");
+                refreshCoursesData();
+            });
+            task.setOnFailed(event -> {
+                layout.setDisable(false);
+                Throwable t = task.getException();
+                lblMsg.setText("Failed: " + t.getMessage());
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+            });
+            new Thread(task).start();
+        });
+
+        btnDelete.setOnAction(e -> {
+            Course selected = cbSelect.getValue();
+            if (selected == null)
+                return;
+
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+            confirm.setTitle("Confirm Delete");
+            confirm.setHeaderText("Delete course " + selected.getCourseName() + "?");
+            confirm.setContentText("This will permanently remove the course. Continue?");
+            if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+                return;
+            }
+
+            layout.setDisable(true);
+            lblMsg.setText("Deleting course...");
+            lblMsg.setStyle("-fx-text-fill: -danger-color;");
+
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    new GoogleSheetsService().deleteCourse(selected.getCourseId());
+                    return null;
+                }
+            };
+            task.setOnSucceeded(event -> {
+                layout.setDisable(false);
+                coursesList.remove(selected);
+                addActivity("❌", "Deleted course: " + selected.getCourseName() + " (" + selected.getCourseId() + ")");
+                resetForm.run();
+                lblMsg.setText("Course deleted successfully.");
+                lblMsg.setStyle("-fx-text-fill: -success-color;");
+                refreshCoursesData();
+            });
+            task.setOnFailed(event -> {
+                layout.setDisable(false);
+                Throwable t = task.getException();
+                lblMsg.setText("Failed: " + t.getMessage());
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+            });
+            new Thread(task).start();
+        });
+
+        layout.getChildren().addAll(lblTitle, selectorRow, grid, lblMsg, btnBox);
+
+        Scene scene = new Scene(layout);
+        java.io.File cssFile = new java.io.File("styles.css");
+        if (cssFile.exists()) {
+            try {
+                scene.getStylesheets().add(cssFile.toURI().toURL().toExternalForm());
+            } catch (Exception ignored) {
+            }
+        }
+        modalStage.setScene(scene);
+        modalStage.setResizable(false);
+        modalStage.show();
+    }
+
+    private void openBatchesEditorModal() {
+        Stage modalStage = new Stage();
+        modalStage.initOwner(this.getScene().getWindow());
+        modalStage.initModality(Modality.APPLICATION_MODAL);
+        modalStage.setTitle("Batch Manager");
+
+        VBox layout = new VBox(15);
+        layout.setPadding(new Insets(20));
+        layout.getStyleClass().add("content-card");
+        layout.setStyle("-fx-background-color: -bg-app; -fx-pref-width: 450px;");
+
+        Label lblTitle = new Label("Batch Details Editor");
+        lblTitle.getStyleClass().add("card-title");
+
+        HBox selectorRow = new HBox(10);
+        selectorRow.setAlignment(Pos.CENTER_LEFT);
+        Label lblSelect = new Label("Select Batch:");
+        lblSelect.getStyleClass().add("form-label");
+        ComboBox<Batch> cbSelect = new ComboBox<>();
+        cbSelect.setPromptText("Choose Batch to Edit/Delete");
+        cbSelect.setItems(batchesList);
+        cbSelect.setPrefWidth(250);
+        cbSelect.getStyleClass().add("combo-box");
+        cbSelect.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(Batch b, boolean empty) {
+                super.updateItem(b, empty);
+                setText((empty || b == null) ? null : b.getBatchNo() + " (" + b.getBatchId() + ")");
+            }
+        });
+        cbSelect.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(Batch b, boolean empty) {
+                super.updateItem(b, empty);
+                setText((empty || b == null) ? "Choose Batch to Edit/Delete"
+                        : b.getBatchNo() + " (" + b.getBatchId() + ")");
+            }
+        });
+        selectorRow.getChildren().addAll(lblSelect, cbSelect);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(10, 0, 10, 0));
+
+        Label lblId = new Label("Batch ID:");
+        lblId.getStyleClass().add("form-label");
+        TextField txtId = new TextField();
+        txtId.setPromptText("e.g. B1");
+        txtId.getStyleClass().add("text-input");
+        grid.add(lblId, 0, 0);
+        grid.add(txtId, 1, 0);
+
+        Label lblCourse = new Label("Course ID:");
+        lblCourse.getStyleClass().add("form-label");
+        ComboBox<Course> cbCourseSel = new ComboBox<>();
+        cbCourseSel.setPromptText("Select Course");
+        cbCourseSel.setItems(coursesList);
+        cbCourseSel.getStyleClass().add("combo-box");
+        cbCourseSel.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(Course c, boolean empty) {
+                super.updateItem(c, empty);
+                setText((empty || c == null) ? null : c.getCourseName() + " (" + c.getCourseId() + ")");
+            }
+        });
+        cbCourseSel.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(Course c, boolean empty) {
+                super.updateItem(c, empty);
+                setText((empty || c == null) ? "Select Course" : c.getCourseName() + " (" + c.getCourseId() + ")");
+            }
+        });
+        grid.add(lblCourse, 0, 1);
+        grid.add(cbCourseSel, 1, 1);
+
+        Label lblBatchNo = new Label("Batch No:");
+        lblBatchNo.getStyleClass().add("form-label");
+        TextField txtBatchNo = new TextField();
+        txtBatchNo.setPromptText("e.g. Batch 1");
+        txtBatchNo.getStyleClass().add("text-input");
+        grid.add(lblBatchNo, 0, 2);
+        grid.add(txtBatchNo, 1, 2);
+
+        Label lblStartDate = new Label("Start Date:");
+        lblStartDate.getStyleClass().add("form-label");
+        DatePicker dpStartDate = new DatePicker();
+        dpStartDate.getStyleClass().add("date-picker");
+        grid.add(lblStartDate, 0, 3);
+        grid.add(dpStartDate, 1, 3);
+
+        Label lblEndDate = new Label("End Date:");
+        lblEndDate.getStyleClass().add("form-label");
+        DatePicker dpEndDate = new DatePicker();
+        dpEndDate.getStyleClass().add("date-picker");
+        grid.add(lblEndDate, 0, 4);
+        grid.add(dpEndDate, 1, 4);
+
+        Label lblBatchTime = new Label("Batch Time:");
+        lblBatchTime.getStyleClass().add("form-label");
+        TextField txtBatchTime = new TextField();
+        txtBatchTime.setPromptText("e.g. 09:00 AM - 11:00 AM");
+        txtBatchTime.getStyleClass().add("text-input");
+        grid.add(lblBatchTime, 0, 5);
+        grid.add(txtBatchTime, 1, 5);
+
+        Label lblMsg = new Label();
+        lblMsg.setStyle("-fx-font-weight: bold;");
+
+        HBox btnBox = new HBox(8);
+        btnBox.setAlignment(Pos.CENTER);
+        btnBox.setPadding(new Insets(10, 0, 0, 0));
+
+        Button btnAdd = new Button("Add");
+        btnAdd.getStyleClass().addAll("btn", "btn-primary");
+
+        Button btnUpdate = new Button("Update");
+        btnUpdate.getStyleClass().addAll("btn", "btn-success");
+        btnUpdate.setDisable(true);
+
+        Button btnDelete = new Button("Delete");
+        btnDelete.getStyleClass().addAll("btn", "btn-danger");
+        btnDelete.setDisable(true);
+
+        Button btnClear = new Button("Clear");
+        btnClear.getStyleClass().addAll("btn", "btn-secondary");
+
+        Button btnClose = new Button("Close");
+        btnClose.getStyleClass().addAll("btn", "btn-secondary");
+        btnClose.setOnAction(e -> modalStage.close());
+
+        btnBox.getChildren().addAll(btnAdd, btnUpdate, btnDelete, btnClear, btnClose);
+
+        cbSelect.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                txtId.setText(newVal.getBatchId());
+                txtId.setEditable(false);
+                txtId.setDisable(true);
+
+                Course matchedCourse = null;
+                for (Course c : coursesList) {
+                    if (c.getCourseId().equalsIgnoreCase(newVal.getCourseId())) {
+                        matchedCourse = c;
+                        break;
+                    }
+                }
+                cbCourseSel.setValue(matchedCourse);
+                txtBatchNo.setText(newVal.getBatchNo());
+                try {
+                    dpStartDate.setValue(LocalDate.parse(newVal.getStartDate(), DATE_FORMATTER));
+                } catch (Exception ex) {
+                    dpStartDate.setValue(null);
+                }
+                try {
+                    dpEndDate.setValue(LocalDate.parse(newVal.getEndDate(), DATE_FORMATTER));
+                } catch (Exception ex) {
+                    dpEndDate.setValue(null);
+                }
+                txtBatchTime.setText(newVal.getBatchTime());
+
+                btnAdd.setDisable(true);
+                btnUpdate.setDisable(false);
+                btnDelete.setDisable(false);
+            }
+        });
+
+        Runnable resetForm = () -> {
+            cbSelect.setValue(null);
+            txtId.clear();
+            txtId.setEditable(true);
+            txtId.setDisable(false);
+            cbCourseSel.setValue(null);
+            txtBatchNo.clear();
+            dpStartDate.setValue(null);
+            dpEndDate.setValue(null);
+            txtBatchTime.clear();
+
+            btnAdd.setDisable(false);
+            btnUpdate.setDisable(true);
+            btnDelete.setDisable(true);
+            lblMsg.setText("");
+        };
+        btnClear.setOnAction(e -> resetForm.run());
+
+        btnAdd.setOnAction(e -> {
+            String bid = txtId.getText().trim();
+            Course course = cbCourseSel.getValue();
+            String bno = txtBatchNo.getText().trim();
+            String btime = txtBatchTime.getText().trim();
+
+            if (bid.isEmpty() || course == null || bno.isEmpty() || dpStartDate.getValue() == null
+                    || dpEndDate.getValue() == null || btime.isEmpty()) {
+                lblMsg.setText("All fields are required.");
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+                return;
+            }
+
+            for (Batch batch : batchesList) {
+                if (batch.getBatchId().equalsIgnoreCase(bid)) {
+                    lblMsg.setText("Batch ID already exists!");
+                    lblMsg.setStyle("-fx-text-fill: -danger-color;");
+                    return;
+                }
+            }
+
+            layout.setDisable(true);
+            lblMsg.setText("Adding batch...");
+            lblMsg.setStyle("-fx-text-fill: -primary-color;");
+
+            String sdate = dpStartDate.getValue().format(DATE_FORMATTER);
+            String edate = dpEndDate.getValue().format(DATE_FORMATTER);
+            Batch newBatch = new Batch(bid, course.getCourseId(), bno, sdate, edate, btime);
+
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    new GoogleSheetsService().addBatch(newBatch);
+                    return null;
+                }
+            };
+            task.setOnSucceeded(event -> {
+                layout.setDisable(false);
+                batchesList.add(newBatch);
+                addActivity("➕", "Added new batch: " + newBatch.getBatchNo() + " (" + newBatch.getBatchId() + ")");
+                resetForm.run();
+                lblMsg.setText("Batch added successfully.");
+                lblMsg.setStyle("-fx-text-fill: -success-color;");
+                refreshBatchesData();
+            });
+            task.setOnFailed(event -> {
+                layout.setDisable(false);
+                Throwable t = task.getException();
+                lblMsg.setText("Failed: " + t.getMessage());
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+            });
+            new Thread(task).start();
+        });
+
+        btnUpdate.setOnAction(e -> {
+            Batch selected = cbSelect.getValue();
+            if (selected == null)
+                return;
+            Course course = cbCourseSel.getValue();
+            String bno = txtBatchNo.getText().trim();
+            String btime = txtBatchTime.getText().trim();
+
+            if (course == null || bno.isEmpty() || dpStartDate.getValue() == null || dpEndDate.getValue() == null
+                    || btime.isEmpty()) {
+                lblMsg.setText("All fields are required.");
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+                return;
+            }
+
+            layout.setDisable(true);
+            lblMsg.setText("Updating batch...");
+            lblMsg.setStyle("-fx-text-fill: -primary-color;");
+
+            String sdate = dpStartDate.getValue().format(DATE_FORMATTER);
+            String edate = dpEndDate.getValue().format(DATE_FORMATTER);
+            Batch updatedBatch = new Batch(selected.getBatchId(), course.getCourseId(), bno, sdate, edate, btime);
+
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    new GoogleSheetsService().updateBatch(updatedBatch);
+                    return null;
+                }
+            };
+            task.setOnSucceeded(event -> {
+                layout.setDisable(false);
+                selected.setCourseId(course.getCourseId());
+                selected.setBatchNo(bno);
+                selected.setStartDate(sdate);
+                selected.setEndDate(edate);
+                selected.setBatchTime(btime);
+
+                addActivity("📝", "Updated batch: " + bno + " (" + selected.getBatchId() + ")");
+                resetForm.run();
+                lblMsg.setText("Batch updated successfully.");
+                lblMsg.setStyle("-fx-text-fill: -success-color;");
+                refreshBatchesData();
+            });
+            task.setOnFailed(event -> {
+                layout.setDisable(false);
+                Throwable t = task.getException();
+                lblMsg.setText("Failed: " + t.getMessage());
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+            });
+            new Thread(task).start();
+        });
+
+        btnDelete.setOnAction(e -> {
+            Batch selected = cbSelect.getValue();
+            if (selected == null)
+                return;
+
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+            confirm.setTitle("Confirm Delete");
+            confirm.setHeaderText("Delete batch " + selected.getBatchNo() + "?");
+            confirm.setContentText("This will permanently remove the batch. Continue?");
+            if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+                return;
+            }
+
+            layout.setDisable(true);
+            lblMsg.setText("Deleting batch...");
+            lblMsg.setStyle("-fx-text-fill: -danger-color;");
+
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    new GoogleSheetsService().deleteBatch(selected.getBatchId());
+                    return null;
+                }
+            };
+            task.setOnSucceeded(event -> {
+                layout.setDisable(false);
+                batchesList.remove(selected);
+                addActivity("❌", "Deleted batch: " + selected.getBatchNo() + " (" + selected.getBatchId() + ")");
+                resetForm.run();
+                lblMsg.setText("Batch deleted successfully.");
+                lblMsg.setStyle("-fx-text-fill: -success-color;");
+                refreshBatchesData();
+            });
+            task.setOnFailed(event -> {
+                layout.setDisable(false);
+                Throwable t = task.getException();
+                lblMsg.setText("Failed: " + t.getMessage());
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+            });
+            new Thread(task).start();
+        });
+
+        layout.getChildren().addAll(lblTitle, selectorRow, grid, lblMsg, btnBox);
+
+        Scene scene = new Scene(layout);
+        java.io.File cssFile = new java.io.File("styles.css");
+        if (cssFile.exists()) {
+            try {
+                scene.getStylesheets().add(cssFile.toURI().toURL().toExternalForm());
+            } catch (Exception ignored) {
+            }
+        }
+        modalStage.setScene(scene);
+        modalStage.setResizable(false);
+        modalStage.show();
+    }
+
+    private void openCompaniesEditorModal() {
+        Stage modalStage = new Stage();
+        modalStage.initOwner(this.getScene().getWindow());
+        modalStage.initModality(Modality.APPLICATION_MODAL);
+        modalStage.setTitle("Company Manager");
+
+        VBox layout = new VBox(15);
+        layout.setPadding(new Insets(20));
+        layout.getStyleClass().add("content-card");
+        layout.setStyle("-fx-background-color: -bg-app; -fx-pref-width: 480px;");
+
+        Label lblTitle = new Label("Company Details Editor");
+        lblTitle.getStyleClass().add("card-title");
+
+        HBox selectorRow = new HBox(10);
+        selectorRow.setAlignment(Pos.CENTER_LEFT);
+        Label lblSelect = new Label("Select Company:");
+        lblSelect.getStyleClass().add("form-label");
+        ComboBox<Company> cbSelect = new ComboBox<>();
+        cbSelect.setPromptText("Choose Company to Edit/Delete");
+        cbSelect.setItems(companiesList);
+        cbSelect.setPrefWidth(280);
+        cbSelect.getStyleClass().add("combo-box");
+        cbSelect.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(Company c, boolean empty) {
+                super.updateItem(c, empty);
+                setText((empty || c == null) ? null : c.getCompanyName() + " (" + c.getCompanyId() + ")");
+            }
+        });
+        cbSelect.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(Company c, boolean empty) {
+                super.updateItem(c, empty);
+                setText((empty || c == null) ? "Choose Company to Edit/Delete"
+                        : c.getCompanyName() + " (" + c.getCompanyId() + ")");
+            }
+        });
+        selectorRow.getChildren().addAll(lblSelect, cbSelect);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(10, 0, 10, 0));
+
+        Label lblId = new Label("Company ID:");
+        lblId.getStyleClass().add("form-label");
+        TextField txtId = new TextField();
+        txtId.setPromptText("e.g. CO1");
+        txtId.getStyleClass().add("text-input");
+        grid.add(lblId, 0, 0);
+        grid.add(txtId, 1, 0);
+
+        Label lblName = new Label("Company Name:");
+        lblName.getStyleClass().add("form-label");
+        TextField txtName = new TextField();
+        txtName.setPromptText("e.g. Google India");
+        txtName.getStyleClass().add("text-input");
+        grid.add(lblName, 0, 1);
+        grid.add(txtName, 1, 1);
+
+        Label lblHr = new Label("HR Name:");
+        lblHr.getStyleClass().add("form-label");
+        TextField txtHr = new TextField();
+        txtHr.setPromptText("e.g. Jane Doe");
+        txtHr.getStyleClass().add("text-input");
+        grid.add(lblHr, 0, 2);
+        grid.add(txtHr, 1, 2);
+
+        Label lblAddress = new Label("Address:");
+        lblAddress.getStyleClass().add("form-label");
+        TextField txtAddress = new TextField();
+        txtAddress.setPromptText("e.g. Mumbai, Maharashtra");
+        txtAddress.getStyleClass().add("text-input");
+        grid.add(lblAddress, 0, 3);
+        grid.add(txtAddress, 1, 3);
+
+        Label lblContact = new Label("Contact Info:");
+        lblContact.getStyleClass().add("form-label");
+        TextField txtContact = new TextField();
+        txtContact.setPromptText("e.g. hr@google.com");
+        txtContact.getStyleClass().add("text-input");
+        grid.add(lblContact, 0, 4);
+        grid.add(txtContact, 1, 4);
+
+        Label lblMsg = new Label();
+        lblMsg.setStyle("-fx-font-weight: bold;");
+
+        HBox btnBox = new HBox(8);
+        btnBox.setAlignment(Pos.CENTER);
+        btnBox.setPadding(new Insets(10, 0, 0, 0));
+
+        Button btnAdd = new Button("Add");
+        btnAdd.getStyleClass().addAll("btn", "btn-primary");
+
+        Button btnUpdate = new Button("Update");
+        btnUpdate.getStyleClass().addAll("btn", "btn-success");
+        btnUpdate.setDisable(true);
+
+        Button btnDelete = new Button("Delete");
+        btnDelete.getStyleClass().addAll("btn", "btn-danger");
+        btnDelete.setDisable(true);
+
+        Button btnClear = new Button("Clear");
+        btnClear.getStyleClass().addAll("btn", "btn-secondary");
+
+        Button btnClose = new Button("Close");
+        btnClose.getStyleClass().addAll("btn", "btn-secondary");
+        btnClose.setOnAction(e -> modalStage.close());
+
+        btnBox.getChildren().addAll(btnAdd, btnUpdate, btnDelete, btnClear, btnClose);
+
+        cbSelect.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                txtId.setText(newVal.getCompanyId());
+                txtId.setEditable(false);
+                txtId.setDisable(true);
+                txtName.setText(newVal.getCompanyName());
+                txtHr.setText(newVal.getHrName());
+                txtAddress.setText(newVal.getCompanyAddress());
+                txtContact.setText(newVal.getContactInfo());
+
+                btnAdd.setDisable(true);
+                btnUpdate.setDisable(false);
+                btnDelete.setDisable(false);
+            }
+        });
+
+        Runnable resetForm = () -> {
+            cbSelect.setValue(null);
+            txtId.clear();
+            txtId.setEditable(true);
+            txtId.setDisable(false);
+            txtName.clear();
+            txtHr.clear();
+            txtAddress.clear();
+            txtContact.clear();
+
+            btnAdd.setDisable(false);
+            btnUpdate.setDisable(true);
+            btnDelete.setDisable(true);
+            lblMsg.setText("");
+        };
+        btnClear.setOnAction(e -> resetForm.run());
+
+        btnAdd.setOnAction(e -> {
+            String cid = txtId.getText().trim();
+            String cname = txtName.getText().trim();
+            String hr = txtHr.getText().trim();
+            String addr = txtAddress.getText().trim();
+            String cont = txtContact.getText().trim();
+
+            if (cid.isEmpty() || cname.isEmpty() || hr.isEmpty() || addr.isEmpty() || cont.isEmpty()) {
+                lblMsg.setText("All fields are required.");
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+                return;
+            }
+
+            for (Company comp : companiesList) {
+                if (comp.getCompanyId().equalsIgnoreCase(cid)) {
+                    lblMsg.setText("Company ID already exists!");
+                    lblMsg.setStyle("-fx-text-fill: -danger-color;");
+                    return;
+                }
+            }
+
+            layout.setDisable(true);
+            lblMsg.setText("Adding company...");
+            lblMsg.setStyle("-fx-text-fill: -primary-color;");
+
+            Company newComp = new Company(cid, cname, hr, addr, cont);
+
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    new GoogleSheetsService().addCompany(newComp);
+                    return null;
+                }
+            };
+            task.setOnSucceeded(event -> {
+                layout.setDisable(false);
+                companiesList.add(newComp);
+                addActivity("➕",
+                        "Added new company: " + newComp.getCompanyName() + " (" + newComp.getCompanyId() + ")");
+                resetForm.run();
+                lblMsg.setText("Company added successfully.");
+                lblMsg.setStyle("-fx-text-fill: -success-color;");
+                refreshCompaniesData();
+            });
+            task.setOnFailed(event -> {
+                layout.setDisable(false);
+                Throwable t = task.getException();
+                lblMsg.setText("Failed: " + t.getMessage());
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+            });
+            new Thread(task).start();
+        });
+
+        btnUpdate.setOnAction(e -> {
+            Company selected = cbSelect.getValue();
+            if (selected == null)
+                return;
+            String cname = txtName.getText().trim();
+            String hr = txtHr.getText().trim();
+            String addr = txtAddress.getText().trim();
+            String cont = txtContact.getText().trim();
+
+            if (cname.isEmpty() || hr.isEmpty() || addr.isEmpty() || cont.isEmpty()) {
+                lblMsg.setText("All fields are required.");
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+                return;
+            }
+
+            layout.setDisable(true);
+            lblMsg.setText("Updating company...");
+            lblMsg.setStyle("-fx-text-fill: -primary-color;");
+
+            Company updatedComp = new Company(selected.getCompanyId(), cname, hr, addr, cont);
+
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    new GoogleSheetsService().updateCompany(updatedComp);
+                    return null;
+                }
+            };
+            task.setOnSucceeded(event -> {
+                layout.setDisable(false);
+                selected.setCompanyName(cname);
+                selected.setHrName(hr);
+                selected.setCompanyAddress(addr);
+                selected.setContactInfo(cont);
+
+                addActivity("📝", "Updated company: " + cname + " (" + selected.getCompanyId() + ")");
+                resetForm.run();
+                lblMsg.setText("Company updated successfully.");
+                lblMsg.setStyle("-fx-text-fill: -success-color;");
+                refreshCompaniesData();
+            });
+            task.setOnFailed(event -> {
+                layout.setDisable(false);
+                Throwable t = task.getException();
+                lblMsg.setText("Failed: " + t.getMessage());
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+            });
+            new Thread(task).start();
+        });
+
+        btnDelete.setOnAction(e -> {
+            Company selected = cbSelect.getValue();
+            if (selected == null)
+                return;
+
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+            confirm.setTitle("Confirm Delete");
+            confirm.setHeaderText("Delete company " + selected.getCompanyName() + "?");
+            confirm.setContentText("This will permanently remove the company. Continue?");
+            if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+                return;
+            }
+
+            layout.setDisable(true);
+            lblMsg.setText("Deleting company...");
+            lblMsg.setStyle("-fx-text-fill: -danger-color;");
+
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    new GoogleSheetsService().deleteCompany(selected.getCompanyId());
+                    return null;
+                }
+            };
+            task.setOnSucceeded(event -> {
+                layout.setDisable(false);
+                companiesList.remove(selected);
+                addActivity("❌",
+                        "Deleted company: " + selected.getCompanyName() + " (" + selected.getCompanyId() + ")");
+                resetForm.run();
+                lblMsg.setText("Company deleted successfully.");
+                lblMsg.setStyle("-fx-text-fill: -success-color;");
+                refreshCompaniesData();
+            });
+            task.setOnFailed(event -> {
+                layout.setDisable(false);
+                Throwable t = task.getException();
+                lblMsg.setText("Failed: " + t.getMessage());
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+            });
+            new Thread(task).start();
+        });
+
+        layout.getChildren().addAll(lblTitle, selectorRow, grid, lblMsg, btnBox);
+
+        Scene scene = new Scene(layout);
+        java.io.File cssFile = new java.io.File("styles.css");
+        if (cssFile.exists()) {
+            try {
+                scene.getStylesheets().add(cssFile.toURI().toURL().toExternalForm());
+            } catch (Exception ignored) {
+            }
+        }
+        modalStage.setScene(scene);
+        modalStage.setResizable(false);
+        modalStage.show();
+    }
+
+    private void openPlacementsEditorModal() {
+        Stage modalStage = new Stage();
+        modalStage.initOwner(this.getScene().getWindow());
+        modalStage.initModality(Modality.APPLICATION_MODAL);
+        modalStage.setTitle("Placement Manager");
+
+        VBox layout = new VBox(15);
+        layout.setPadding(new Insets(20));
+        layout.getStyleClass().add("content-card");
+        layout.setStyle("-fx-background-color: -bg-app; -fx-pref-width: 480px;");
+
+        Label lblTitle = new Label("Placement Details Editor");
+        lblTitle.getStyleClass().add("card-title");
+
+        HBox selectorRow = new HBox(10);
+        selectorRow.setAlignment(Pos.CENTER_LEFT);
+        Label lblSelect = new Label("Select Placement:");
+        lblSelect.getStyleClass().add("form-label");
+        ComboBox<StudentPlacement> cbSelect = new ComboBox<>();
+        cbSelect.setPromptText("Choose Placement to Edit/Delete");
+        cbSelect.setItems(placementsList);
+        cbSelect.setPrefWidth(280);
+        cbSelect.getStyleClass().add("combo-box");
+        cbSelect.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(StudentPlacement p, boolean empty) {
+                super.updateItem(p, empty);
+                setText((empty || p == null) ? null : p.getPlacementId() + " - Student ID: " + p.getStudentId());
+            }
+        });
+        cbSelect.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(StudentPlacement p, boolean empty) {
+                super.updateItem(p, empty);
+                setText((empty || p == null) ? "Choose Placement to Edit/Delete"
+                        : p.getPlacementId() + " - Student ID: " + p.getStudentId());
+            }
+        });
+        selectorRow.getChildren().addAll(lblSelect, cbSelect);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(10, 0, 10, 0));
+
+        Label lblId = new Label("Placement ID:");
+        lblId.getStyleClass().add("form-label");
+        TextField txtId = new TextField();
+        txtId.setPromptText("e.g. PL1");
+        txtId.getStyleClass().add("text-input");
+        grid.add(lblId, 0, 0);
+        grid.add(txtId, 1, 0);
+
+        Label lblStudent = new Label("Student:");
+        lblStudent.getStyleClass().add("form-label");
+        ComboBox<Student> cbStudentSel = new ComboBox<>();
+        cbStudentSel.setPromptText("Select Student");
+        cbStudentSel.setItems(studentsList);
+        cbStudentSel.getStyleClass().add("combo-box");
+        cbStudentSel.setPrefWidth(250);
+        cbStudentSel.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(Student s, boolean empty) {
+                super.updateItem(s, empty);
+                setText((empty || s == null) ? null : s.getName() + " (" + s.getId() + ")");
+            }
+        });
+        cbStudentSel.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(Student s, boolean empty) {
+                super.updateItem(s, empty);
+                setText((empty || s == null) ? "Select Student" : s.getName() + " (" + s.getId() + ")");
+            }
+        });
+        grid.add(lblStudent, 0, 1);
+        grid.add(cbStudentSel, 1, 1);
+
+        Label lblErp = new Label("ERP No:");
+        lblErp.getStyleClass().add("form-label");
+        TextField txtErp = new TextField();
+        txtErp.setEditable(false);
+        txtErp.setDisable(true);
+        txtErp.getStyleClass().add("text-input");
+        grid.add(lblErp, 0, 2);
+        grid.add(txtErp, 1, 2);
+
+        cbStudentSel.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                txtErp.setText(newVal.getErpNo());
+            } else {
+                txtErp.clear();
+            }
+        });
+
+        Label lblCompany = new Label("Company:");
+        lblCompany.getStyleClass().add("form-label");
+        ComboBox<Company> cbCompanySel = new ComboBox<>();
+        cbCompanySel.setPromptText("Select Company");
+        cbCompanySel.setItems(companiesList);
+        cbCompanySel.getStyleClass().add("combo-box");
+        cbCompanySel.setPrefWidth(250);
+        cbCompanySel.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(Company c, boolean empty) {
+                super.updateItem(c, empty);
+                setText((empty || c == null) ? null : c.getCompanyName() + " (" + c.getCompanyId() + ")");
+            }
+        });
+        cbCompanySel.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(Company c, boolean empty) {
+                super.updateItem(c, empty);
+                setText((empty || c == null) ? "Select Company" : c.getCompanyName() + " (" + c.getCompanyId() + ")");
+            }
+        });
+        grid.add(lblCompany, 0, 3);
+        grid.add(cbCompanySel, 1, 3);
+
+        Label lblStatus = new Label("Status:");
+        lblStatus.getStyleClass().add("form-label");
+        ComboBox<String> cbStatus = new ComboBox<>();
+        cbStatus.getItems().addAll("Placed", "Pending", "Selected", "Rejected", "Interviewing");
+        cbStatus.setValue("Pending");
+        cbStatus.getStyleClass().add("combo-box");
+        cbStatus.setPrefWidth(250);
+        grid.add(lblStatus, 0, 4);
+        grid.add(cbStatus, 1, 4);
+
+        Label lblDate = new Label("Selection Date:");
+        lblDate.getStyleClass().add("form-label");
+        DatePicker dpDate = new DatePicker();
+        dpDate.getStyleClass().add("date-picker");
+        grid.add(lblDate, 0, 5);
+        grid.add(dpDate, 1, 5);
+
+        Label lblRemark = new Label("Remark:");
+        lblRemark.getStyleClass().add("form-label");
+        TextField txtRemark = new TextField();
+        txtRemark.setPromptText("e.g. Package: 4.5 LPA");
+        txtRemark.getStyleClass().add("text-input");
+        grid.add(lblRemark, 0, 6);
+        grid.add(txtRemark, 1, 6);
+
+        Label lblMsg = new Label();
+        lblMsg.setStyle("-fx-font-weight: bold;");
+
+        HBox btnBox = new HBox(8);
+        btnBox.setAlignment(Pos.CENTER);
+        btnBox.setPadding(new Insets(10, 0, 0, 0));
+
+        Button btnAdd = new Button("Add");
+        btnAdd.getStyleClass().addAll("btn", "btn-primary");
+
+        Button btnUpdate = new Button("Update");
+        btnUpdate.getStyleClass().addAll("btn", "btn-success");
+        btnUpdate.setDisable(true);
+
+        Button btnDelete = new Button("Delete");
+        btnDelete.getStyleClass().addAll("btn", "btn-danger");
+        btnDelete.setDisable(true);
+
+        Button btnClear = new Button("Clear");
+        btnClear.getStyleClass().addAll("btn", "btn-secondary");
+
+        Button btnClose = new Button("Close");
+        btnClose.getStyleClass().addAll("btn", "btn-secondary");
+        btnClose.setOnAction(e -> modalStage.close());
+
+        btnBox.getChildren().addAll(btnAdd, btnUpdate, btnDelete, btnClear, btnClose);
+
+        cbSelect.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                txtId.setText(newVal.getPlacementId());
+                txtId.setEditable(false);
+                txtId.setDisable(true);
+
+                Student matchedStudent = null;
+                for (Student s : studentsList) {
+                    if (s.getId().equalsIgnoreCase(newVal.getStudentId())) {
+                        matchedStudent = s;
+                        break;
+                    }
+                }
+                cbStudentSel.setValue(matchedStudent);
+                txtErp.setText(newVal.getErpNo());
+
+                Company matchedCompany = null;
+                for (Company c : companiesList) {
+                    if (c.getCompanyId().equalsIgnoreCase(newVal.getCompanyId())) {
+                        matchedCompany = c;
+                        break;
+                    }
+                }
+                cbCompanySel.setValue(matchedCompany);
+                cbStatus.setValue(newVal.getPlacementStatus());
+
+                try {
+                    dpDate.setValue(LocalDate.parse(newVal.getSelectionDate(), DATE_FORMATTER));
+                } catch (Exception ex) {
+                    dpDate.setValue(null);
+                }
+                txtRemark.setText(newVal.getRemark());
+
+                btnAdd.setDisable(true);
+                btnUpdate.setDisable(false);
+                btnDelete.setDisable(false);
+            }
+        });
+
+        Runnable resetForm = () -> {
+            cbSelect.setValue(null);
+            txtId.clear();
+            txtId.setEditable(true);
+            txtId.setDisable(false);
+            cbStudentSel.setValue(null);
+            txtErp.clear();
+            cbCompanySel.setValue(null);
+            cbStatus.setValue("Pending");
+            dpDate.setValue(null);
+            txtRemark.clear();
+
+            btnAdd.setDisable(false);
+            btnUpdate.setDisable(true);
+            btnDelete.setDisable(true);
+            lblMsg.setText("");
+        };
+        btnClear.setOnAction(e -> resetForm.run());
+
+        btnAdd.setOnAction(e -> {
+            String pid = txtId.getText().trim();
+            Student stud = cbStudentSel.getValue();
+            Company comp = cbCompanySel.getValue();
+            String stat = cbStatus.getValue();
+            String rem = txtRemark.getText().trim();
+
+            if (pid.isEmpty() || stud == null || comp == null || stat == null || dpDate.getValue() == null) {
+                lblMsg.setText("All fields (except remark) are required.");
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+                return;
+            }
+
+            for (StudentPlacement pl : placementsList) {
+                if (pl.getPlacementId().equalsIgnoreCase(pid)) {
+                    lblMsg.setText("Placement ID already exists!");
+                    lblMsg.setStyle("-fx-text-fill: -danger-color;");
+                    return;
+                }
+            }
+
+            layout.setDisable(true);
+            lblMsg.setText("Adding placement...");
+            lblMsg.setStyle("-fx-text-fill: -primary-color;");
+
+            String pdate = dpDate.getValue().format(DATE_FORMATTER);
+            StudentPlacement newPlacement = new StudentPlacement(pid, stud.getId(), stud.getErpNo(),
+                    comp.getCompanyId(), stat, pdate, rem);
+
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    new GoogleSheetsService().addPlacement(newPlacement);
+                    return null;
+                }
+            };
+            task.setOnSucceeded(event -> {
+                layout.setDisable(false);
+                placementsList.add(newPlacement);
+                addActivity("➕", "Added placement record for student: " + stud.getName());
+                resetForm.run();
+                lblMsg.setText("Placement added successfully.");
+                lblMsg.setStyle("-fx-text-fill: -success-color;");
+                refreshPlacementsData();
+            });
+            task.setOnFailed(event -> {
+                layout.setDisable(false);
+                Throwable t = task.getException();
+                lblMsg.setText("Failed: " + t.getMessage());
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+            });
+            new Thread(task).start();
+        });
+
+        btnUpdate.setOnAction(e -> {
+            StudentPlacement selected = cbSelect.getValue();
+            if (selected == null)
+                return;
+            Student stud = cbStudentSel.getValue();
+            Company comp = cbCompanySel.getValue();
+            String stat = cbStatus.getValue();
+            String rem = txtRemark.getText().trim();
+
+            if (stud == null || comp == null || stat == null || dpDate.getValue() == null) {
+                lblMsg.setText("All fields (except remark) are required.");
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+                return;
+            }
+
+            layout.setDisable(true);
+            lblMsg.setText("Updating placement...");
+            lblMsg.setStyle("-fx-text-fill: -primary-color;");
+
+            String pdate = dpDate.getValue().format(DATE_FORMATTER);
+            StudentPlacement updatedPlacement = new StudentPlacement(selected.getPlacementId(), stud.getId(),
+                    stud.getErpNo(), comp.getCompanyId(), stat, pdate, rem);
+
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    new GoogleSheetsService().updatePlacement(updatedPlacement);
+                    return null;
+                }
+            };
+            task.setOnSucceeded(event -> {
+                layout.setDisable(false);
+                selected.setStudentId(stud.getId());
+                selected.setErpNo(stud.getErpNo());
+                selected.setCompanyId(comp.getCompanyId());
+                selected.setPlacementStatus(stat);
+                selected.setSelectionDate(pdate);
+                selected.setRemark(rem);
+
+                addActivity("📝", "Updated placement ID: " + selected.getPlacementId());
+                resetForm.run();
+                lblMsg.setText("Placement updated successfully.");
+                lblMsg.setStyle("-fx-text-fill: -success-color;");
+                refreshPlacementsData();
+            });
+            task.setOnFailed(event -> {
+                layout.setDisable(false);
+                Throwable t = task.getException();
+                lblMsg.setText("Failed: " + t.getMessage());
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+            });
+            new Thread(task).start();
+        });
+
+        btnDelete.setOnAction(e -> {
+            StudentPlacement selected = cbSelect.getValue();
+            if (selected == null)
+                return;
+
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+            confirm.setTitle("Confirm Delete");
+            confirm.setHeaderText("Delete placement record " + selected.getPlacementId() + "?");
+            confirm.setContentText("This will permanently remove the placement. Continue?");
+            if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+                return;
+            }
+
+            layout.setDisable(true);
+            lblMsg.setText("Deleting placement...");
+            lblMsg.setStyle("-fx-text-fill: -danger-color;");
+
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    new GoogleSheetsService().deletePlacement(selected.getPlacementId());
+                    return null;
+                }
+            };
+            task.setOnSucceeded(event -> {
+                layout.setDisable(false);
+                placementsList.remove(selected);
+                addActivity("❌", "Deleted placement record: " + selected.getPlacementId());
+                resetForm.run();
+                lblMsg.setText("Placement deleted successfully.");
+                lblMsg.setStyle("-fx-text-fill: -success-color;");
+                refreshPlacementsData();
+            });
+            task.setOnFailed(event -> {
+                layout.setDisable(false);
+                Throwable t = task.getException();
+                lblMsg.setText("Failed: " + t.getMessage());
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+            });
+            new Thread(task).start();
+        });
+
+        layout.getChildren().addAll(lblTitle, selectorRow, grid, lblMsg, btnBox);
+
+        Scene scene = new Scene(layout);
+        java.io.File cssFile = new java.io.File("styles.css");
+        if (cssFile.exists()) {
+            try {
+                scene.getStylesheets().add(cssFile.toURI().toURL().toExternalForm());
+            } catch (Exception ignored) {
+            }
+        }
+        modalStage.setScene(scene);
+        modalStage.setResizable(false);
+        modalStage.show();
     }
 }
