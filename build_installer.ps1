@@ -61,10 +61,10 @@ Copy-Item javafx-sdk-21.0.2\bin\*.dll dist\YouvakendraSM\runtime\bin\ -Force
 # Remove package_input temp folder
 Remove-Item -Recurse -Force package_input
 
-# 3. Create ZIP archive of the app image
+# 3. Create ZIP archive of the app image using jar tool (to enforce forward slash separators in zip entries for backward compatibility with older updaters)
 Write-Host "Creating ZIP archive of the application image..." -ForegroundColor Cyan
 if (Test-Path YouvakendraSM.zip) { Remove-Item YouvakendraSM.zip -Force }
-Compress-Archive -Path dist/YouvakendraSM/* -DestinationPath YouvakendraSM.zip -Force
+jar -c -M -f YouvakendraSM.zip -C dist/YouvakendraSM .
 
 # 4. Compile Installer.cs to dist\setup.exe using csc
 Write-Host "Compiling setup.exe using csc..." -ForegroundColor Cyan

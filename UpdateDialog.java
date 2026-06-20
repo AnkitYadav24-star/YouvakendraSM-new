@@ -13,7 +13,7 @@ public class UpdateDialog extends JDialog {
     private JPanel infoPanel;
     private JPanel buttonPanel;
     private JPanel progressPanel;
-    
+
     private JLabel statusLabel;
     private JProgressBar progressBar;
     private ModernButton btnUpdate;
@@ -86,8 +86,7 @@ public class UpdateDialog extends JDialog {
         versionCard.setBackground(COLOR_BG_CARD);
         versionCard.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(0x0F, 0x17, 0x2A, 20), 1, true),
-                BorderFactory.createEmptyBorder(12, 16, 12, 16)
-        ));
+                BorderFactory.createEmptyBorder(12, 16, 12, 16)));
         versionCard.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel lblCurrTag = new JLabel("Current Version:");
@@ -117,12 +116,14 @@ public class UpdateDialog extends JDialog {
         buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(COLOR_BG_APP);
 
-        btnLater = new ModernButton("Later", COLOR_SECONDARY, COLOR_SECONDARY_HOVER, COLOR_SECONDARY_ACTIVE, COLOR_TEXT_MAIN);
+        btnLater = new ModernButton("Later", COLOR_SECONDARY, COLOR_SECONDARY_HOVER, COLOR_SECONDARY_ACTIVE,
+                COLOR_TEXT_MAIN);
         btnLater.setPreferredSize(new Dimension(100, 36));
         btnLater.addActionListener(e -> dispose());
         buttonPanel.add(btnLater);
 
-        btnUpdate = new ModernButton("Update Now", COLOR_PRIMARY, COLOR_PRIMARY_HOVER, COLOR_PRIMARY_ACTIVE, Color.WHITE);
+        btnUpdate = new ModernButton("Update Now", COLOR_PRIMARY, COLOR_PRIMARY_HOVER, COLOR_PRIMARY_ACTIVE,
+                Color.WHITE);
         btnUpdate.setPreferredSize(new Dimension(120, 36));
         btnUpdate.addActionListener(e -> startUpdateProcess());
         buttonPanel.add(btnUpdate);
@@ -166,12 +167,13 @@ public class UpdateDialog extends JDialog {
                 SwingUtilities.invokeLater(() -> {
                     if (percent >= 0) {
                         progressBar.setValue(percent);
-                        statusLabel.setText(String.format("Downloading update: %d%% (%.2f MB / %.2f MB)", 
+                        statusLabel.setText(String.format("Downloading update: %d%% (%.2f MB / %.2f MB)",
                                 percent, bytesDownloaded / (1024.0 * 1024.0), totalBytes / (1024.0 * 1024.0)));
                     } else {
                         // Indeterminate size
                         progressBar.setIndeterminate(true);
-                        statusLabel.setText(String.format("Downloading update: %.2f MB", bytesDownloaded / (1024.0 * 1024.0)));
+                        statusLabel.setText(
+                                String.format("Downloading update: %.2f MB", bytesDownloaded / (1024.0 * 1024.0)));
                     }
                 });
             }
@@ -186,12 +188,12 @@ public class UpdateDialog extends JDialog {
                 // Extract files in a background thread to keep UI smooth
                 new Thread(() -> {
                     boolean success = AutoUpdater.extractUpdateZip(latestVersion);
-                    
+
                     SwingUtilities.invokeLater(() -> {
                         if (success) {
                             statusLabel.setForeground(COLOR_SUCCESS);
                             statusLabel.setText("Installation ready. Restarting application...");
-                            
+
                             // Let the user see the completion message for a brief moment
                             Timer timer = new Timer(1000, e -> {
                                 dispose();
@@ -201,9 +203,11 @@ public class UpdateDialog extends JDialog {
                             timer.start();
                         } else {
                             String errMessage = "Extraction failed. Please try again later.";
-                            if (AutoUpdater.lastExceptionMessage != null && !AutoUpdater.lastExceptionMessage.isEmpty()) {
+                            if (AutoUpdater.lastExceptionMessage != null
+                                    && !AutoUpdater.lastExceptionMessage.isEmpty()) {
                                 errMessage = "Extraction failed: " + AutoUpdater.lastExceptionMessage;
-                                if (AutoUpdater.lastFailedFilePath != null && !AutoUpdater.lastFailedFilePath.isEmpty()) {
+                                if (AutoUpdater.lastFailedFilePath != null
+                                        && !AutoUpdater.lastFailedFilePath.isEmpty()) {
                                     errMessage += "\nFailed File Path: " + AutoUpdater.lastFailedFilePath;
                                 }
                             }
@@ -233,7 +237,8 @@ public class UpdateDialog extends JDialog {
         errorActionPanel.setBackground(COLOR_BG_APP);
         errorActionPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        ModernButton btnClose = new ModernButton("Close", COLOR_SECONDARY, COLOR_SECONDARY_HOVER, COLOR_SECONDARY_ACTIVE, COLOR_TEXT_MAIN);
+        ModernButton btnClose = new ModernButton("Close", COLOR_SECONDARY, COLOR_SECONDARY_HOVER,
+                COLOR_SECONDARY_ACTIVE, COLOR_TEXT_MAIN);
         btnClose.setPreferredSize(new Dimension(100, 32));
         btnClose.addActionListener(e -> dispose());
         errorActionPanel.add(btnClose);
@@ -257,7 +262,7 @@ public class UpdateDialog extends JDialog {
             this.normalColor = normal;
             this.hoverColor = hover;
             this.activeColor = active;
-            
+
             setContentAreaFilled(false);
             setFocusPainted(false);
             setBorderPainted(false);
@@ -286,7 +291,7 @@ public class UpdateDialog extends JDialog {
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            
+
             if (getModel().isPressed()) {
                 g2.setColor(activeColor);
             } else if (getModel().isRollover()) {
@@ -294,11 +299,11 @@ public class UpdateDialog extends JDialog {
             } else {
                 g2.setColor(normalColor);
             }
-            
+
             // Draw a rounded rectangle background
             g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
             g2.dispose();
-            
+
             super.paintComponent(g);
         }
     }
