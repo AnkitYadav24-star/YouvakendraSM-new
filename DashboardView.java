@@ -171,6 +171,9 @@ public class DashboardView extends BorderPane {
 
         // Initial update of dashboard numbers
         updateDashboardMetrics();
+
+        // Fetch data on startup to populate dashboard metrics
+        fetchDataForDashboard();
     }
 
     private void initializeDummyData() {
@@ -693,19 +696,27 @@ public class DashboardView extends BorderPane {
             lblTotalStudentsVal.setText(String.valueOf(total));
         }
 
-        // Present & Absent counts from today's attendance data (if any loaded), or fall back to checking in-memory state
-        String todayStr = LocalDate.now().toString();
+        // Present & Absent counts from today's attendance data
+        String todayStrFormatted = LocalDate.now().format(DATE_FORMATTER); // e.g. "20-Jun-2026"
+        String todayStrISO = LocalDate.now().toString(); // e.g. "2026-06-20"
+
         long presentCount = attendanceList.stream()
-                .filter(a -> todayStr.equals(a.getDate()) && "Present".equalsIgnoreCase(a.getStatus()))
+                .filter(a -> (todayStrFormatted.equalsIgnoreCase(a.getDate()) || todayStrISO.equals(a.getDate())) && "Present".equalsIgnoreCase(a.getStatus()))
                 .count();
         long absentCount = attendanceList.stream()
-                .filter(a -> todayStr.equals(a.getDate()) && "Absent".equalsIgnoreCase(a.getStatus()))
+                .filter(a -> (todayStrFormatted.equalsIgnoreCase(a.getDate()) || todayStrISO.equals(a.getDate())) && "Absent".equalsIgnoreCase(a.getStatus()))
                 .count();
 
-        // If no attendance records exist for today, calculate based on presentStudentIds list (marked in daily check-in) or overall status
-        if (presentCount == 0 && absentCount == 0) {
-            presentCount = presentStudentIds.size();
-            absentCount = total - presentCount;
+        // Fallback to latest date in the attendance sheet if no records for today exist
+        if (presentCount == 0 && absentCount == 0 && !attendanceList.isEmpty()) {
+            // Find the most recent date in the attendance list
+            String latestDate = attendanceList.get(attendanceList.size() - 1).getDate();
+            presentCount = attendanceList.stream()
+                    .filter(a -> latestDate.equals(a.getDate()) && "Present".equalsIgnoreCase(a.getStatus()))
+                    .count();
+            absentCount = attendanceList.stream()
+                    .filter(a -> latestDate.equals(a.getDate()) && "Absent".equalsIgnoreCase(a.getStatus()))
+                    .count();
         }
 
         if (lblPresentVal != null) {
@@ -721,6 +732,37 @@ public class DashboardView extends BorderPane {
         if (lblReadyVal != null) {
             lblReadyVal.setText(String.valueOf(readyTotal));
         }
+    }
+
+    private void fetchDataForDashboard() {
+        javafx.concurrent.Task<Void> loadTask = new javafx.concurrent.Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                GoogleSheetsService service = new GoogleSheetsService();
+                List<Student> loadedStudents = service.readStudents();
+                List<Attendance> loadedAttendance = service.getAttendanceRecords();
+
+                javafx.application.Platform.runLater(() -> {
+                    studentsList.clear();
+                    studentsList.addAll(loadedStudents);
+
+                    attendanceList.clear();
+                    attendanceList.addAll(loadedAttendance);
+
+                    presentStudentIds.clear();
+                    for (Student s : loadedStudents) {
+                        if ("Active".equalsIgnoreCase(s.getStatus())) {
+                            presentStudentIds.add(s.getId());
+                        }
+                    }
+
+                    updateDashboardMetrics();
+                });
+                return null;
+            }
+        };
+
+        new Thread(loadTask).start();
     }
 
     // --- PANEL 2: STUDENT MANAGEMENT ---
@@ -765,34 +807,58 @@ public class DashboardView extends BorderPane {
 
         tableContainer.getChildren().addAll(studentTable, loadingOverlay);
 
-        // Table Columns
-        TableColumn<Student, String> colId = new TableColumn<>("ID");
-        colId.setCellValueFactory(data -> data.getValue().idProperty());
-        colId.setPrefWidth(80);
+        // Table Columns - 13 columns in order
+        TableColumn<Student, String> colId = new TableColumn<>("Student_ID");
+        colId.setCellValueFactory(data -> data.getValue().studentIdProperty());
+        colId.setPrefWidth(90);
 
-        TableColumn<Student, String> colName = new TableColumn<>("Student Name");
-        colName.setCellValueFactory(data -> data.getValue().nameProperty());
-        colName.setPrefWidth(180);
+        TableColumn<Student, String> colErpNo = new TableColumn<>("ERP_No");
+        colErpNo.setCellValueFactory(data -> data.getValue().erpNoProperty());
+        colErpNo.setPrefWidth(90);
+
+        TableColumn<Student, String> colName = new TableColumn<>("Student_Name");
+        colName.setCellValueFactory(data -> data.getValue().studentNameProperty());
+        colName.setPrefWidth(140);
+
+        TableColumn<Student, String> colFatherName = new TableColumn<>("Father_Name");
+        colFatherName.setCellValueFactory(data -> data.getValue().fatherNameProperty());
+        colFatherName.setPrefWidth(120);
+
+        TableColumn<Student, String> colDob = new TableColumn<>("DOB");
+        colDob.setCellValueFactory(data -> data.getValue().dobProperty());
+        colDob.setPrefWidth(100);
+
+        TableColumn<Student, String> colAddress = new TableColumn<>("Address");
+        colAddress.setCellValueFactory(data -> data.getValue().addressProperty());
+        colAddress.setPrefWidth(140);
 
         TableColumn<Student, String> colCourse = new TableColumn<>("Course");
         colCourse.setCellValueFactory(data -> data.getValue().courseProperty());
-        colCourse.setPrefWidth(90);
+        colCourse.setPrefWidth(80);
 
-        TableColumn<Student, String> colBatch = new TableColumn<>("Batch");
-        colBatch.setCellValueFactory(data -> data.getValue().batchProperty());
-        colBatch.setPrefWidth(120);
+        TableColumn<Student, String> colCenter = new TableColumn<>("Center");
+        colCenter.setCellValueFactory(data -> data.getValue().centerProperty());
+        colCenter.setPrefWidth(90);
 
-        TableColumn<Student, String> colAdm = new TableColumn<>("Admission");
-        colAdm.setCellValueFactory(data -> data.getValue().admissionDateProperty());
-        colAdm.setPrefWidth(120);
+        TableColumn<Student, String> colBatchId = new TableColumn<>("Batch_ID");
+        colBatchId.setCellValueFactory(data -> data.getValue().batchIdProperty());
+        colBatchId.setPrefWidth(95);
 
-        TableColumn<Student, String> colCmp = new TableColumn<>("Completion");
-        colCmp.setCellValueFactory(data -> data.getValue().completionDateProperty());
-        colCmp.setPrefWidth(120);
+        TableColumn<Student, String> colBatchTime = new TableColumn<>("Batch_Time");
+        colBatchTime.setCellValueFactory(data -> data.getValue().batchTimeProperty());
+        colBatchTime.setPrefWidth(110);
+
+        TableColumn<Student, String> colDoj = new TableColumn<>("DOJ");
+        colDoj.setCellValueFactory(data -> data.getValue().dojProperty());
+        colDoj.setPrefWidth(100);
+
+        TableColumn<Student, String> colCourseDuration = new TableColumn<>("Course_Duration");
+        colCourseDuration.setCellValueFactory(data -> data.getValue().courseDurationProperty());
+        colCourseDuration.setPrefWidth(120);
 
         TableColumn<Student, String> colStatus = new TableColumn<>("Status");
         colStatus.setCellValueFactory(data -> data.getValue().statusProperty());
-        colStatus.setPrefWidth(130);
+        colStatus.setPrefWidth(120);
 
         // Customize Status column cell drawing
         colStatus.setCellFactory(column -> new TableCell<Student, String>() {
@@ -831,7 +897,7 @@ public class DashboardView extends BorderPane {
             }
         });
 
-        studentTable.getColumns().addAll(colId, colName, colCourse, colBatch, colAdm, colCmp, colStatus);
+        studentTable.getColumns().addAll(colId, colErpNo, colName, colFatherName, colDob, colAddress, colCourse, colCenter, colBatchId, colBatchTime, colDoj, colCourseDuration, colStatus);
         studentTable.setItems(filteredStudents);
 
         tableBox.getChildren().addAll(lblTableTitle, tableContainer);
