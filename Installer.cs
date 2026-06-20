@@ -161,6 +161,14 @@ public class InstallerForm : Form {
 
         System.Threading.ThreadPool.QueueUserWorkItem((state) => {
             try {
+                // Terminate any running instances of the app to release file locks for clean installation/reinstallation
+                foreach (var process in System.Diagnostics.Process.GetProcessesByName("YouvakendraSM")) {
+                    try {
+                        process.Kill();
+                        process.WaitForExit(5000);
+                    } catch {}
+                }
+
                 if (!Directory.Exists(targetDir)) {
                     Directory.CreateDirectory(targetDir);
                 }
@@ -184,8 +192,45 @@ public class InstallerForm : Form {
                 statusLabel.Invoke((Action)(() => statusLabel.Text = "Installing to folder..."));
 
                 if (File.Exists(tempZipPath)) {
-                    // Extracting ZIP contents
-                    ZipFile.ExtractToDirectory(tempZipPath, targetDir);
+                    using (ZipArchive archive = ZipFile.OpenRead(tempZipPath)) {
+                        foreach (ZipArchiveEntry entry in archive.Entries) {
+                            string destinationPath = Path.GetFullPath(Path.Combine(targetDir, entry.FullName));
+                            
+                            // Prevent Zip Slip path traversal vulnerability
+                            if (!destinationPath.StartsWith(Path.GetFullPath(targetDir), StringComparison.OrdinalIgnoreCase)) {
+                                continue;
+                            }
+
+                            if (entry.FullName.EndsWith("/") || entry.FullName.EndsWith("\\")) {
+                                Directory.CreateDirectory(destinationPath);
+                            } else {
+                                Directory.CreateDirectory(Path.GetDirectoryName(destinationPath));
+                                
+                                bool resolved = false;
+                                while (!resolved) {
+                                    try {
+                                        entry.ExtractToFile(destinationPath, true);
+                                        resolved = true;
+                                    } catch (IOException) {
+                                        DialogResult res = (DialogResult)this.Invoke((Func<DialogResult>)(() => {
+                                            return MessageBox.Show(
+                                                this,
+                                                "Failed to write file: " + Path.GetFileName(destinationPath) + "\n\n" +
+                                                "The file might be locked by a running instance of YouvakendraSM.\n" +
+                                                "Please close YouvakendraSM and click Retry.",
+                                                "File Locked",
+                                                MessageBoxButtons.RetryCancel,
+                                                MessageBoxIcon.Warning
+                                            );
+                                        }));
+                                        if (res == DialogResult.Cancel) {
+                                            throw new Exception("Installation cancelled due to locked file: " + Path.GetFileName(destinationPath));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     File.Delete(tempZipPath);
                 }
 

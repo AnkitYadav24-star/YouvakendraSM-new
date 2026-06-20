@@ -12,7 +12,9 @@ public class AutoUpdater {
 
     public interface ProgressCallback {
         void onProgress(int percent, long bytesDownloaded, long totalBytes);
+
         void onComplete();
+
         void onError(String message);
     }
 
@@ -72,7 +74,8 @@ public class AutoUpdater {
                 lastExceptionMessage = "";
                 lastFailedFilePath = "";
 
-                String urlString = "https://github.com/" + Constants.GITHUB_OWNER + "/" + Constants.GITHUB_REPO + "/releases/download/v" + version + "/YouvakendraSM.zip";
+                String urlString = "https://github.com/" + Constants.GITHUB_OWNER + "/" + Constants.GITHUB_REPO
+                        + "/releases/download/v" + version + "/YouvakendraSM.zip";
                 logInfo("Download URL: " + urlString);
                 logInfo("Download start for version: " + version);
 
@@ -83,7 +86,8 @@ public class AutoUpdater {
                 // Redirect fallbacks for v-prefix structures
                 if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
                     logInfo("Release with 'v' prefix returned 404, trying without 'v' prefix...");
-                    urlString = "https://github.com/" + Constants.GITHUB_OWNER + "/" + Constants.GITHUB_REPO + "/releases/download/" + version + "/YouvakendraSM.zip";
+                    urlString = "https://github.com/" + Constants.GITHUB_OWNER + "/" + Constants.GITHUB_REPO
+                            + "/releases/download/" + version + "/YouvakendraSM.zip";
                     logInfo("Download URL: " + urlString);
                     url = new URL(urlString);
                     connection = openConnectionWithRedirects(url);
@@ -123,7 +127,8 @@ public class AutoUpdater {
                 outputStream.close();
                 inputStream.close();
 
-                logInfo("Download complete. File size: " + tempZip.length() + " bytes. ZIP saved to: " + tempZip.getAbsolutePath());
+                logInfo("Download complete. File size: " + tempZip.length() + " bytes. ZIP saved to: "
+                        + tempZip.getAbsolutePath());
                 callback.onComplete();
 
             } catch (Exception e) {
@@ -131,10 +136,14 @@ public class AutoUpdater {
                 callback.onError("Download error: " + e.getMessage());
             } finally {
                 try {
-                    if (outputStream != null) outputStream.close();
-                    if (inputStream != null) inputStream.close();
-                } catch (IOException ignored) {}
-                if (connection != null) connection.disconnect();
+                    if (outputStream != null)
+                        outputStream.close();
+                    if (inputStream != null)
+                        inputStream.close();
+                } catch (IOException ignored) {
+                }
+                if (connection != null)
+                    connection.disconnect();
             }
         }).start();
     }
@@ -152,8 +161,8 @@ public class AutoUpdater {
         int status = conn.getResponseCode();
         int redirectCount = 0;
 
-        while ((status == HttpURLConnection.HTTP_MOVED_TEMP || 
-                status == HttpURLConnection.HTTP_MOVED_PERM || 
+        while ((status == HttpURLConnection.HTTP_MOVED_TEMP ||
+                status == HttpURLConnection.HTTP_MOVED_PERM ||
                 status == 307 || status == 308) && redirectCount < 5) {
 
             String newUrl = conn.getHeaderField("Location");
@@ -209,7 +218,8 @@ public class AutoUpdater {
                 throw new IOException("The ZIP archive is empty (0 entries).");
             }
             if (!containsJar) {
-                throw new IOException("Expected payload file 'YouvakendraSM.jar' was not found inside the update package.");
+                throw new IOException(
+                        "Expected payload file 'YouvakendraSM.jar' was not found inside the update package.");
             }
             logInfo("ZIP validation passed. Contains " + entryCount + " entries.");
         } catch (Exception e) {
@@ -271,14 +281,15 @@ public class AutoUpdater {
             while ((entry = zipIn.getNextEntry()) != null) {
                 String entryName = entry.getName();
 
-                // Establish the prefix on the first entry (strip top-level directories if present)
+                // Establish the prefix on the first entry (strip top-level directories if
+                // present)
                 if (commonPrefix == null) {
                     int firstSlashIndex = entryName.indexOf('/');
                     if (firstSlashIndex != -1) {
                         String firstDir = entryName.substring(0, firstSlashIndex);
-                        if (firstDir.equalsIgnoreCase(Constants.GITHUB_REPO + "-" + latestVersion) || 
-                            firstDir.equalsIgnoreCase(Constants.GITHUB_REPO + "-v" + latestVersion) || 
-                            firstDir.contains("-")) {
+                        if (firstDir.equalsIgnoreCase(Constants.GITHUB_REPO + "-" + latestVersion) ||
+                                firstDir.equalsIgnoreCase(Constants.GITHUB_REPO + "-v" + latestVersion) ||
+                                firstDir.contains("-")) {
                             commonPrefix = firstDir + "/";
                             logInfo("Detected top-level folder wrapper prefix: " + commonPrefix);
                         } else {
@@ -350,6 +361,7 @@ public class AutoUpdater {
             writer.println("echo   YouvakendraSM - Installing Updates");
             writer.println("echo ========================================================");
             writer.println("echo Waiting for the main application to close...");
+            writer.println("taskkill /f /im YouvakendraSM.exe > nul 2>nul");
             writer.println("timeout /t 1 /nobreak > nul");
 
             writer.println("set retryCount=0");
@@ -363,14 +375,16 @@ public class AutoUpdater {
             writer.println("        pause");
             writer.println("        exit");
             writer.println("    )");
-            writer.println("    echo Files are locked by running application. Retrying (%retryCount%/20) in 1 second...");
+            writer.println(
+                    "    echo Files are locked by running application. Retrying (%retryCount%/20) in 1 second...");
             writer.println("    timeout /t 1 /nobreak > nul");
             writer.println("    goto retry_copy");
             writer.println(")");
 
             writer.println("echo Cleaning up update temporary files...");
             writer.println("rmdir /s /q \"update_temp\" > nul");
-            writer.println("if exist \"" + Constants.UPDATE_ZIP_FILE + "\" del /f /q \"" + Constants.UPDATE_ZIP_FILE + "\" > nul");
+            writer.println("if exist \"" + Constants.UPDATE_ZIP_FILE + "\" del /f /q \"" + Constants.UPDATE_ZIP_FILE
+                    + "\" > nul");
 
             writer.println("echo Restarting the application...");
             writer.println("if exist \"YouvakendraSM.exe\" (");

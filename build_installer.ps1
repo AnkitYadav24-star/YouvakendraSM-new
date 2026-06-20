@@ -69,7 +69,7 @@ jar -c -M -f YouvakendraSM.zip -C dist/YouvakendraSM .
 # 4. Compile Installer.cs to dist\setup.exe using csc
 Write-Host "Compiling setup.exe using csc..." -ForegroundColor Cyan
 $cscPath = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
-& $cscPath /target:winexe /win32icon:assets\logo.ico /resource:YouvakendraSM.zip /r:System.Windows.Forms.dll,System.Drawing.dll,System.IO.Compression.FileSystem.dll /out:dist\setup.exe Installer.cs
+& $cscPath /target:winexe /win32icon:assets\logo.ico /resource:YouvakendraSM.zip /r:System.Windows.Forms.dll,System.Drawing.dll,System.IO.Compression.dll,System.IO.Compression.FileSystem.dll /out:dist\setup.exe Installer.cs
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "C# compilation failed."
