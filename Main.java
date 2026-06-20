@@ -7,8 +7,22 @@ public class Main extends Application {
     @Override
     public void start(Stage primaryStage) {
         try {
-            DashboardView root = new DashboardView();
-            Scene scene = new Scene(root, 1100, 650);
+            // Login callback to transition to DashboardView
+            LoginView loginRoot = new LoginView(user -> {
+                try {
+                    DashboardView dashboardRoot = new DashboardView(user);
+                    primaryStage.getScene().setRoot(dashboardRoot);
+                    primaryStage.setMinWidth(1200);
+                    primaryStage.setMinHeight(650);
+                    primaryStage.setWidth(1250);
+                    primaryStage.setHeight(720);
+                    primaryStage.centerOnScreen();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+
+            Scene scene = new Scene(loginRoot, 600, 650);
 
             // Load custom styles
             java.io.File cssFile = new java.io.File("styles.css");
@@ -20,7 +34,7 @@ public class Main extends Application {
                 System.out.println("Warning: styles.css not found, running with default styling.");
             }
 
-            primaryStage.setTitle("YouvakendraSM");
+            primaryStage.setTitle("YouvakendraSM - Login");
 
             // Set window icon
             try {
@@ -40,8 +54,8 @@ public class Main extends Application {
             }
 
             primaryStage.setScene(scene);
-            primaryStage.setMinWidth(1200);
-            primaryStage.setMinHeight(650);
+            primaryStage.setMinWidth(500);
+            primaryStage.setMinHeight(600);
             primaryStage.show();
 
             // Run GitHub-based auto update check in the background

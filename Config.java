@@ -8,6 +8,9 @@ public class Config {
     public static final String BATCHES_SHEET_NAME = "Batches";
     public static final String COMPANIES_SHEET_NAME = "Companies";
     public static final String PLACEMENTS_SHEET_NAME = "Student_Placements";
+    public static final String ADMINS_SHEET_NAME = "Admins";
+    public static final String TRAINERS_SHEET_NAME = "Trainers";
+    public static final String STUDENT_LOGIN_SHEET_NAME = "Student_login";
     
     public static final String CREDENTIALS_PATH = getCredentialsPath();
 

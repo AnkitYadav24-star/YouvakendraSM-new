@@ -12,6 +12,10 @@ import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import javafx.stage.Stage;
+import javafx.stage.Modality;
+import javafx.scene.Scene;
+import javafx.concurrent.Task;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -34,6 +38,7 @@ public class DashboardView extends BorderPane {
 
     // Active role in system
     private String currentRole = "Admin";
+    private LoggedInUser loggedInUser;
 
     // Attendance state: present student IDs
     private final List<String> presentStudentIds = new ArrayList<>();
@@ -130,6 +135,19 @@ public class DashboardView extends BorderPane {
     private VBox formBox;
 
     public DashboardView() {
+        this(new LoggedInUser(LoggedInUser.Role.ADMIN, "AD001", "Admin User", "", "Center 1", "Admin", ""));
+    }
+
+    public DashboardView(LoggedInUser user) {
+        this.loggedInUser = user;
+        if (user.getRole() == LoggedInUser.Role.ADMIN) {
+            this.currentRole = "Admin";
+        } else if (user.getRole() == LoggedInUser.Role.TRAINER) {
+            this.currentRole = "Trainer";
+        } else {
+            this.currentRole = "Viewer";
+        }
+
         // Initialize dummy student data
         initializeDummyData();
 
@@ -174,6 +192,9 @@ public class DashboardView extends BorderPane {
 
         // Fetch data on startup to populate dashboard metrics
         fetchDataForDashboard();
+
+        // Apply role permissions initially
+        switchUserRole(currentRole);
     }
 
     private void initializeDummyData() {
@@ -388,22 +409,61 @@ public class DashboardView extends BorderPane {
         StackPane avatarPane = new StackPane();
         Circle avatarBg = new Circle(18);
         avatarBg.getStyleClass().add("avatar-circle");
-        txtAvatarChar = new Text("A");
+        
+        String initialChar = "A";
+        if (loggedInUser != null && loggedInUser.getName() != null && !loggedInUser.getName().isEmpty()) {
+            initialChar = loggedInUser.getName().substring(0, 1).toUpperCase();
+        }
+        txtAvatarChar = new Text(initialChar);
         txtAvatarChar.getStyleClass().add("avatar-text");
         avatarPane.getChildren().addAll(avatarBg, txtAvatarChar);
+
+        if (loggedInUser != null && loggedInUser.getPictureUrl() != null && !loggedInUser.getPictureUrl().isEmpty()) {
+            try {
+                javafx.scene.image.ImageView imgView = new javafx.scene.image.ImageView();
+                javafx.scene.image.Image img = new javafx.scene.image.Image(loggedInUser.getPictureUrl(), true);
+                imgView.setImage(img);
+                imgView.setFitWidth(36);
+                imgView.setFitHeight(36);
+                imgView.setPreserveRatio(true);
+                Circle clip = new Circle(18, 18, 18);
+                imgView.setClip(clip);
+                
+                img.progressProperty().addListener((obs, oldVal, newVal) -> {
+                    if (newVal.doubleValue() == 1.0 && !img.isError()) {
+                        txtAvatarChar.setVisible(false);
+                    }
+                });
+                avatarPane.getChildren().add(imgView);
+            } catch (Exception e) {
+                System.out.println("Could not load header avatar: " + e.getMessage());
+            }
+        }
 
         // Profile Text
         VBox profileTxtBox = new VBox();
         profileTxtBox.setAlignment(Pos.CENTER_LEFT);
-        lblHeaderUserName = new Label("Admin User");
+        lblHeaderUserName = new Label(loggedInUser != null ? loggedInUser.getName() : "Admin User");
         lblHeaderUserName.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
-        lblHeaderRoleBadge = new Label("Admin");
+        lblHeaderRoleBadge = new Label(currentRole);
         lblHeaderRoleBadge.getStyleClass().addAll("role-badge");
 
         profileTxtBox.getChildren().addAll(lblHeaderUserName, lblHeaderRoleBadge);
 
-        header.getChildren().addAll(txtSearch, spacer, btnNotification, lblRoleSelectText, cbRoleSelector, avatarPane,
-                profileTxtBox);
+        // Clickable profile section
+        HBox profileBox = new HBox(10, avatarPane, profileTxtBox);
+        profileBox.setAlignment(Pos.CENTER_LEFT);
+        profileBox.setCursor(javafx.scene.Cursor.HAND);
+        profileBox.setOnMouseClicked(e -> showUserProfilePopup());
+
+        // Hide role selector for non-admins
+        boolean isAdminUser = loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.ADMIN;
+        lblRoleSelectText.setVisible(isAdminUser);
+        lblRoleSelectText.setManaged(isAdminUser);
+        cbRoleSelector.setVisible(isAdminUser);
+        cbRoleSelector.setManaged(isAdminUser);
+
+        header.getChildren().addAll(txtSearch, spacer, btnNotification, lblRoleSelectText, cbRoleSelector, profileBox);
         return header;
     }
 
@@ -412,18 +472,32 @@ public class DashboardView extends BorderPane {
         lblHeaderRoleBadge.getStyleClass().removeAll("role-badge", "role-badge-trainer", "role-badge-viewer");
         lblHeaderRoleBadge.getStyleClass().add("role-badge");
 
+        String displayRole = role;
+        String displayName = "Viewer Account";
+        if (loggedInUser != null) {
+            String loggedInRoleStr = loggedInUser.getRole() == LoggedInUser.Role.ADMIN ? "Admin" : 
+                                    (loggedInUser.getRole() == LoggedInUser.Role.TRAINER ? "Trainer" : "Viewer");
+            if (loggedInRoleStr.equals(role)) {
+                displayName = loggedInUser.getName();
+            } else {
+                displayName = role + " View";
+            }
+        } else {
+            if ("Admin".equals(role)) displayName = "Admin User";
+            else if ("Trainer".equals(role)) displayName = "Trainer Staff";
+        }
+
+        lblHeaderUserName.setText(displayName);
+
         if ("Admin".equals(role)) {
-            lblHeaderUserName.setText("Admin User");
             lblHeaderRoleBadge.setText("Admin");
             txtAvatarChar.setText("A");
         } else if ("Trainer".equals(role)) {
             lblHeaderRoleBadge.getStyleClass().add("role-badge-trainer");
-            lblHeaderUserName.setText("Trainer Staff");
             lblHeaderRoleBadge.setText("Trainer");
             txtAvatarChar.setText("T");
         } else {
             lblHeaderRoleBadge.getStyleClass().add("role-badge-viewer");
-            lblHeaderUserName.setText("Viewer Account");
             lblHeaderRoleBadge.setText("Viewer");
             txtAvatarChar.setText("V");
         }
@@ -746,6 +820,20 @@ public class DashboardView extends BorderPane {
                     studentsList.clear();
                     studentsList.addAll(loadedStudents);
 
+                    int maxIdNum = 0;
+                    for (Student s : loadedStudents) {
+                        String id = s.getId();
+                        if (id != null && id.startsWith("ST")) {
+                            try {
+                                int num = Integer.parseInt(id.substring(2).trim());
+                                if (num > maxIdNum) {
+                                    maxIdNum = num;
+                                }
+                            } catch (NumberFormatException ignored) {}
+                        }
+                    }
+                    nextStudentIdNum = maxIdNum + 1;
+
                     attendanceList.clear();
                     attendanceList.addAll(loadedAttendance);
 
@@ -774,19 +862,31 @@ public class DashboardView extends BorderPane {
         Label lblTitle = new Label("Student Directory & Profiles");
         lblTitle.setStyle("-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: -text-main;");
 
-        // Split Layout: Table left, Form right
+        // Layout: Table full width
         HBox bodyLayout = new HBox(20);
         HBox.setHgrow(bodyLayout, Priority.ALWAYS);
         VBox.setVgrow(bodyLayout, Priority.ALWAYS);
 
-        // Left Table Box (65%)
+        // Left Table Box (100% width)
         VBox tableBox = new VBox(15);
         tableBox.getStyleClass().add("content-card");
-        tableBox.setPrefWidth(850);
         HBox.setHgrow(tableBox, Priority.ALWAYS);
+
+        HBox tableHeaderBar = new HBox(15);
+        tableHeaderBar.setAlignment(Pos.CENTER_LEFT);
 
         Label lblTableTitle = new Label("Student Enrollments");
         lblTableTitle.getStyleClass().add("card-title");
+        lblTableTitle.setStyle("-fx-padding: 0;");
+
+        Region toolbarSpacer = new Region();
+        HBox.setHgrow(toolbarSpacer, Priority.ALWAYS);
+
+        Button btnManageStudents = new Button("Manage Students ⚙️");
+        btnManageStudents.getStyleClass().addAll("btn", "btn-primary");
+        btnManageStudents.setOnAction(e -> openStudentEditorModal());
+
+        tableHeaderBar.getChildren().addAll(lblTableTitle, toolbarSpacer, btnManageStudents);
 
         StackPane tableContainer = new StackPane();
         VBox.setVgrow(tableContainer, Priority.ALWAYS);
@@ -900,13 +1000,12 @@ public class DashboardView extends BorderPane {
         studentTable.getColumns().addAll(colId, colErpNo, colName, colFatherName, colDob, colAddress, colCourse, colCenter, colBatchId, colBatchTime, colDoj, colCourseDuration, colStatus);
         studentTable.setItems(filteredStudents);
 
-        tableBox.getChildren().addAll(lblTableTitle, tableContainer);
+        tableBox.getChildren().addAll(tableHeaderBar, tableContainer);
 
-        // Right Form Box (35%)
+        // Form Box (For Modal Editor popup)
         formBox = new VBox(15);
         formBox.getStyleClass().add("content-card");
-        formBox.setPrefWidth(480);
-        formBox.setMaxWidth(500);
+        formBox.setPrefWidth(450);
 
         Label lblFormTitle = new Label("Student Details Editor");
         lblFormTitle.getStyleClass().add("card-title");
@@ -938,7 +1037,7 @@ public class DashboardView extends BorderPane {
 
         // Name
         txtName = new TextField();
-        gp.add(new Label("Student Name *:"), 0, 1);
+        gp.add(new Label("Student Name * :"), 0, 1);
         gp.add(txtName, 1, 1);
 
         // Father Name
@@ -953,7 +1052,7 @@ public class DashboardView extends BorderPane {
 
         // Mobile
         txtMobile = new TextField();
-        gp.add(new Label("Mobile Number *:"), 0, 4);
+        gp.add(new Label("Mobile Number * :"), 0, 4);
         gp.add(txtMobile, 1, 4);
 
         // Alt Mobile
@@ -970,20 +1069,20 @@ public class DashboardView extends BorderPane {
         cbCourse = new ComboBox<>();
         cbCourse.getItems().addAll("DM", "DTP");
         cbCourse.setMaxWidth(Double.MAX_VALUE);
-        gp.add(new Label("Course Select *:"), 0, 7);
+        gp.add(new Label("Course Select * :"), 0, 7);
         gp.add(cbCourse, 1, 7);
 
         // Batch
         cbBatch = new ComboBox<>();
         cbBatch.getItems().addAll("A (10AM-1PM)", "B (2PM-5PM)", "C (3PM-6PM)");
         cbBatch.setMaxWidth(Double.MAX_VALUE);
-        gp.add(new Label("Batch Time *:"), 0, 8);
+        gp.add(new Label("Batch Time * :"), 0, 8);
         gp.add(cbBatch, 1, 8);
 
         // Admission Date
         dpAdmissionDate = new DatePicker();
         dpAdmissionDate.setMaxWidth(Double.MAX_VALUE);
-        gp.add(new Label("Admission Date *:"), 0, 9);
+        gp.add(new Label("Admission Date * :"), 0, 9);
         gp.add(dpAdmissionDate, 1, 9);
 
         // Completion Date (Calculated)
@@ -1042,7 +1141,7 @@ public class DashboardView extends BorderPane {
 
         formBox.getChildren().addAll(lblFormTitle, formScroll, lblFormMessage, btnBox);
 
-        bodyLayout.getChildren().addAll(tableBox, formBox);
+        bodyLayout.getChildren().add(tableBox);
         studentsPanel.getChildren().addAll(lblTitle, bodyLayout);
 
         // Wire Table row selection listener
@@ -1128,7 +1227,7 @@ public class DashboardView extends BorderPane {
         if (!validateForm())
             return;
 
-        String id = String.format("ST%04d", nextStudentIdNum++);
+        String id = String.format("ST%04d", nextStudentIdNum);
         Student s = new Student(
                 id,
                 txtName.getText().trim(),
@@ -1143,13 +1242,45 @@ public class DashboardView extends BorderPane {
                 dpAdmissionDate.getValue().format(DATE_FORMATTER),
                 lblCompletionDate.getText(),
                 cbStatus.getValue());
+        s.setErpNo(""); 
 
-        studentsList.add(s);
-        addActivity("➕", "Added new student: " + s.getName() + " (" + s.getId() + ")");
-        clearFormSelection();
-        updateDashboardMetrics();
+        formBox.setDisable(true);
+        lblFormMessage.setText("Saving to Google Sheets...");
+        lblFormMessage.setStyle("-fx-text-fill: -primary-color;");
 
-        showInfoAlert("Success", "Student profiles added successfully.", "Record " + id + " created.");
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                GoogleSheetsService service = new GoogleSheetsService();
+                service.addStudent(s);
+                return null;
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            formBox.setDisable(false);
+            nextStudentIdNum++;
+            studentsList.add(s);
+            addActivity("➕", "Added new student: " + s.getName() + " (" + s.getId() + ")");
+            clearFormSelection();
+            updateDashboardMetrics();
+            if (editorModalStage != null) {
+                editorModalStage.close();
+            }
+            showInfoAlert("Success", "Student added successfully to Google Sheets.", "Record " + id + " created.");
+            fetchStudentsFromGoogleSheets();
+        });
+
+        task.setOnFailed(e -> {
+            formBox.setDisable(false);
+            Throwable ex = task.getException();
+            ex.printStackTrace();
+            lblFormMessage.setText("Error saving: " + ex.getMessage());
+            lblFormMessage.setStyle("-fx-text-fill: -danger-color;");
+            showErrorAlert("Save Error", "Failed to add student to Google Sheets.", ex.getMessage());
+        });
+
+        new Thread(task).start();
     }
 
     private void doUpdateStudent() {
@@ -1159,27 +1290,75 @@ public class DashboardView extends BorderPane {
         if (!validateForm())
             return;
 
-        selected.setName(txtName.getText().trim());
-        selected.setFatherName(txtFatherName.getText().trim());
-        selected.setMotherName(txtMotherName.getText().trim());
-        selected.setMobile(txtMobile.getText().trim());
-        selected.setAltMobile(txtAltMobile.getText().trim());
-        selected.setEmail(txtEmail.getText().trim());
-        selected.setAddress(txtAddress.getText().trim());
-        selected.setCourse(cbCourse.getValue());
-        selected.setBatch(cbBatch.getValue());
-        selected.setAdmissionDate(dpAdmissionDate.getValue().format(DATE_FORMATTER));
-        selected.setCompletionDate(lblCompletionDate.getText());
-        selected.setStatus(cbStatus.getValue());
+        String id = selected.getId();
+        
+        Student s = new Student(
+                id,
+                txtName.getText().trim(),
+                txtFatherName.getText().trim(),
+                txtMotherName.getText().trim(),
+                txtMobile.getText().trim(),
+                txtAltMobile.getText().trim(),
+                txtEmail.getText().trim(),
+                txtAddress.getText().trim(),
+                cbCourse.getValue(),
+                cbBatch.getValue(),
+                dpAdmissionDate.getValue().format(DATE_FORMATTER),
+                lblCompletionDate.getText(),
+                cbStatus.getValue());
+        s.setErpNo(selected.getErpNo());
+        s.setCenter(selected.getCenter());
+        s.setDob(selected.getDob());
 
-        addActivity("📝", "Updated details for: " + selected.getName() + " (" + selected.getId() + ")");
+        formBox.setDisable(true);
+        lblFormMessage.setText("Updating in Google Sheets...");
+        lblFormMessage.setStyle("-fx-text-fill: -primary-color;");
 
-        // Refresh table display
-        studentTable.refresh();
-        clearFormSelection();
-        updateDashboardMetrics();
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                GoogleSheetsService service = new GoogleSheetsService();
+                service.updateStudent(s);
+                return null;
+            }
+        };
 
-        showInfoAlert("Success", "Student profiles updated successfully.", "Record updated.");
+        task.setOnSucceeded(e -> {
+            formBox.setDisable(false);
+            selected.setName(s.getName());
+            selected.setFatherName(s.getFatherName());
+            selected.setMotherName(s.getMotherName());
+            selected.setMobile(s.getMobile());
+            selected.setAltMobile(s.getAltMobile());
+            selected.setEmail(s.getEmail());
+            selected.setAddress(s.getAddress());
+            selected.setCourse(s.getCourse());
+            selected.setBatch(s.getBatch());
+            selected.setAdmissionDate(s.getAdmissionDate());
+            selected.setCompletionDate(s.getCompletionDate());
+            selected.setStatus(s.getStatus());
+            
+            studentTable.refresh();
+            addActivity("📝", "Updated details for: " + selected.getName() + " (" + selected.getId() + ")");
+            clearFormSelection();
+            updateDashboardMetrics();
+            if (editorModalStage != null) {
+                editorModalStage.close();
+            }
+            showInfoAlert("Success", "Student profiles updated in Google Sheets.", "Record updated.");
+            fetchStudentsFromGoogleSheets();
+        });
+
+        task.setOnFailed(e -> {
+            formBox.setDisable(false);
+            Throwable ex = task.getException();
+            ex.printStackTrace();
+            lblFormMessage.setText("Error updating: " + ex.getMessage());
+            lblFormMessage.setStyle("-fx-text-fill: -danger-color;");
+            showErrorAlert("Update Error", "Failed to update student in Google Sheets.", ex.getMessage());
+        });
+
+        new Thread(task).start();
     }
 
     private void doDeleteStudent() {
@@ -1189,15 +1368,47 @@ public class DashboardView extends BorderPane {
 
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Confirm Delete");
-        confirm.setHeaderText("Remove student record?");
+        confirm.setHeaderText("Remove student record from Google Sheets?");
         confirm.setContentText(
                 "Are you sure you want to permanently delete " + selected.getName() + " (" + selected.getId() + ")?");
 
         if (confirm.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
-            studentsList.remove(selected);
-            addActivity("❌", "Deleted student profile: " + selected.getName() + " (" + selected.getId() + ")");
-            clearFormSelection();
-            updateDashboardMetrics();
+            formBox.setDisable(true);
+            lblFormMessage.setText("Deleting from Google Sheets...");
+            lblFormMessage.setStyle("-fx-text-fill: -danger-color;");
+
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    GoogleSheetsService service = new GoogleSheetsService();
+                    service.deleteStudent(selected.getId());
+                    return null;
+                }
+            };
+
+            task.setOnSucceeded(e -> {
+                formBox.setDisable(false);
+                studentsList.remove(selected);
+                addActivity("❌", "Deleted student profile: " + selected.getName() + " (" + selected.getId() + ")");
+                clearFormSelection();
+                updateDashboardMetrics();
+                if (editorModalStage != null) {
+                    editorModalStage.close();
+                }
+                showInfoAlert("Deleted", "Student profile deleted from Google Sheets.", "Record removed.");
+                fetchStudentsFromGoogleSheets();
+            });
+
+            task.setOnFailed(e -> {
+                formBox.setDisable(false);
+                Throwable ex = task.getException();
+                ex.printStackTrace();
+                lblFormMessage.setText("Error deleting: " + ex.getMessage());
+                lblFormMessage.setStyle("-fx-text-fill: -danger-color;");
+                showErrorAlert("Delete Error", "Failed to delete student from Google Sheets.", ex.getMessage());
+            });
+
+            new Thread(task).start();
         }
     }
 
@@ -1881,6 +2092,20 @@ public class DashboardView extends BorderPane {
             studentsList.clear();
             studentsList.addAll(loaded);
 
+            int maxIdNum = 0;
+            for (Student s : loaded) {
+                String id = s.getId();
+                if (id != null && id.startsWith("ST")) {
+                    try {
+                        int num = Integer.parseInt(id.substring(2).trim());
+                        if (num > maxIdNum) {
+                            maxIdNum = num;
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+            nextStudentIdNum = maxIdNum + 1;
+
             presentStudentIds.clear();
             for (Student s : loaded) {
                 if ("Active".equalsIgnoreCase(s.getStatus())) {
@@ -2155,5 +2380,154 @@ public class DashboardView extends BorderPane {
         });
 
         new Thread(loadTask).start();
+    }
+
+    private Stage editorModalStage;
+
+    private void openStudentEditorModal() {
+        if (editorModalStage != null && editorModalStage.isShowing()) {
+            editorModalStage.toFront();
+            return;
+        }
+
+        editorModalStage = new Stage();
+        editorModalStage.initOwner(this.getScene().getWindow());
+        editorModalStage.initModality(Modality.APPLICATION_MODAL);
+        editorModalStage.setTitle("Student Details Manager");
+
+        if (formBox.getParent() instanceof Pane) {
+            ((Pane) formBox.getParent()).getChildren().remove(formBox);
+        }
+
+        formBox.setPrefWidth(450);
+        formBox.setMaxWidth(Double.MAX_VALUE);
+
+        VBox modalLayout = new VBox(formBox);
+        modalLayout.setPadding(new Insets(10));
+        modalLayout.getStyleClass().add("root");
+
+        Scene scene = new Scene(modalLayout, 500, 650);
+        java.io.File cssFile = new java.io.File("styles.css");
+        if (cssFile.exists()) {
+            try {
+                scene.getStylesheets().add(cssFile.toURI().toURL().toExternalForm());
+            } catch (Exception ignored) {}
+        }
+        editorModalStage.setScene(scene);
+        editorModalStage.setResizable(true);
+        editorModalStage.show();
+    }
+
+    private void showUserProfilePopup() {
+        Stage popup = new Stage();
+        popup.initOwner(this.getScene().getWindow());
+        popup.initModality(Modality.APPLICATION_MODAL);
+        popup.setTitle("User Profile Details");
+
+        VBox layout = new VBox(20);
+        layout.setAlignment(Pos.CENTER);
+        layout.setPadding(new Insets(24));
+        layout.getStyleClass().add("content-card");
+        layout.setStyle("-fx-background-color: -bg-card; -fx-pref-width: 380px; -fx-pref-height: 420px;");
+
+        // Profile Picture
+        StackPane picPane = new StackPane();
+        Circle picBg = new Circle(50, Color.web("#F1F5F9"));
+        picBg.setStroke(Color.web("#CBD5E1"));
+        picBg.setStrokeWidth(2);
+        
+        String initialChar = "A";
+        if (loggedInUser != null && loggedInUser.getName() != null && !loggedInUser.getName().isEmpty()) {
+            initialChar = loggedInUser.getName().substring(0, 1).toUpperCase();
+        }
+        Text picText = new Text(initialChar);
+        picText.setFont(Font.font("System", FontWeight.BOLD, 36));
+        picText.setFill(Color.web("#64748B"));
+        picPane.getChildren().addAll(picBg, picText);
+
+        if (loggedInUser != null && loggedInUser.getPictureUrl() != null && !loggedInUser.getPictureUrl().isEmpty()) {
+            try {
+                javafx.scene.image.ImageView imgView = new javafx.scene.image.ImageView();
+                javafx.scene.image.Image img = new javafx.scene.image.Image(loggedInUser.getPictureUrl(), true);
+                imgView.setImage(img);
+                imgView.setFitWidth(100);
+                imgView.setFitHeight(100);
+                imgView.setPreserveRatio(true);
+                Circle clip = new Circle(50, 50, 50);
+                imgView.setClip(clip);
+                img.progressProperty().addListener((obs, oldVal, newVal) -> {
+                    if (newVal.doubleValue() == 1.0 && !img.isError()) {
+                        picText.setVisible(false);
+                    }
+                });
+                picPane.getChildren().add(imgView);
+            } catch (Exception e) {
+                System.out.println("Could not load popup avatar: " + e.getMessage());
+            }
+        }
+
+        // Details Grid
+        GridPane info = new GridPane();
+        info.setHgap(15);
+        info.setVgap(10);
+        info.setAlignment(Pos.CENTER);
+
+        info.add(new Label("User Name:"), 0, 0);
+        Label lblName = new Label(loggedInUser != null ? loggedInUser.getName() : "Admin User");
+        lblName.setStyle("-fx-font-weight: bold;");
+        info.add(lblName, 1, 0);
+
+        info.add(new Label("Role:"), 0, 1);
+        Label lblRole = new Label(loggedInUser != null ? loggedInUser.getRole().toString() : "ADMIN");
+        lblRole.setStyle("-fx-font-weight: bold;");
+        info.add(lblRole, 1, 1);
+
+        info.add(new Label("User ID:"), 0, 2);
+        Label lblId = new Label(loggedInUser != null ? loggedInUser.getId() : "N/A");
+        lblId.setStyle("-fx-font-weight: bold;");
+        info.add(lblId, 1, 2);
+
+        if (loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.STUDENT) {
+            info.add(new Label("ERP No:"), 0, 3);
+            Label lblErp = new Label(loggedInUser.getErpNo());
+            lblErp.setStyle("-fx-font-weight: bold;");
+            info.add(lblErp, 1, 3);
+        }
+
+        info.add(new Label("Center:"), 0, 4);
+        Label lblCenter = new Label(loggedInUser != null && loggedInUser.getCenter() != null && !loggedInUser.getCenter().isEmpty() ? loggedInUser.getCenter() : "N/A");
+        lblCenter.setStyle("-fx-font-weight: bold;");
+        info.add(lblCenter, 1, 4);
+
+        info.add(new Label("Designation:"), 0, 5);
+        Label lblDesig = new Label(loggedInUser != null && loggedInUser.getDesignation() != null && !loggedInUser.getDesignation().isEmpty() ? loggedInUser.getDesignation() : "N/A");
+        lblDesig.setStyle("-fx-font-weight: bold;");
+        info.add(lblDesig, 1, 5);
+
+        info.getChildren().forEach(node -> {
+            if (node instanceof Label) {
+                Label l = (Label) node;
+                if (GridPane.getColumnIndex(l) != null && GridPane.getColumnIndex(l) == 0) {
+                    l.setStyle("-fx-text-fill: -text-muted; -fx-font-weight: bold;");
+                }
+            }
+        });
+
+        Button btnClose = new Button("Close Profile");
+        btnClose.getStyleClass().addAll("btn", "btn-secondary");
+        btnClose.setOnAction(e -> popup.close());
+
+        layout.getChildren().addAll(picPane, info, btnClose);
+
+        Scene scene = new Scene(layout, 380, 420);
+        java.io.File cssFile = new java.io.File("styles.css");
+        if (cssFile.exists()) {
+            try {
+                scene.getStylesheets().add(cssFile.toURI().toURL().toExternalForm());
+            } catch (Exception ignored) {}
+        }
+        popup.setScene(scene);
+        popup.setResizable(false);
+        popup.showAndWait();
     }
 }

@@ -543,3 +543,69 @@
     -fx-border-color: rgba(15, 23, 42, 0.05);
     -fx-border-width: 1;
 }
+
+/* ==========================================================================
+   Login Window (Premium Glassmorphism Theme & Gradient Background)
+   ========================================================================== */
+.login-root {
+    -fx-background-color: linear-gradient(from 0% 0% to 100% 100%, #0F172A, #1E293B, #1E3A8A);
+    -fx-alignment: center;
+}
+
+.login-card {
+    -fx-background-color: rgba(255, 255, 255, 0.95);
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-border-color: rgba(255, 255, 255, 0.3);
+    -fx-border-width: 1.5;
+    -fx-padding: 36;
+    -fx-effect: dropshadow(three-pass-box, rgba(15, 23, 42, 0.25), 30, 0, 0, 15);
+}
+
+.login-app-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: 800;
+    -fx-text-fill: -primary-color;
+}
+
+.login-app-subtitle {
+    -fx-font-size: 13px;
+    -fx-text-fill: -text-muted;
+}
+
+.login-section-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -text-main;
+}
+
+.btn-portal {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: -border-color;
+    -fx-border-width: 1;
+    -fx-text-fill: -text-main;
+    -fx-padding: 14 24;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(three-pass-box, rgba(15, 23, 42, 0.03), 8, 0, 0, 4);
+}
+
+.btn-portal:hover {
+    -fx-background-color: -primary-light;
+    -fx-border-color: -primary-color;
+    -fx-text-fill: -primary-color;
+}
+
+.login-checkbox {
+    -fx-text-fill: -text-muted;
+    -fx-font-size: 12px;
+}
+
+.login-error-message {
+    -fx-text-fill: -danger-color;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
