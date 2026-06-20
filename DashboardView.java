@@ -98,7 +98,9 @@ public class DashboardView extends BorderPane {
     private VBox activityListContainer;
 
     // Attendance Table & Controls
-    private TableView<Student> attendanceTable;
+    private TableView<Attendance> attendanceTable;
+    private final ObservableList<Attendance> attendanceList = FXCollections.observableArrayList();
+    private VBox loadingOverlayAttendance;
 
     // Loading overlay and Form container
     private VBox loadingOverlay;
@@ -211,9 +213,8 @@ public class DashboardView extends BorderPane {
                         fetchStudentsFromGoogleSheets();
                         break;
                     case "Attendance":
-                        // Refresh attendance lists when opening
-                        buildAttendancePanel();
                         showPanel(attendancePanel);
+                        refreshAttendanceData();
                         break;
                     case "Courses":
                         showPanel(coursesPanel);
@@ -469,10 +470,8 @@ public class DashboardView extends BorderPane {
         activityListContainer = new VBox(10);
         activityListContainer.setPadding(new Insets(5, 0, 5, 0));
 
-        // Initial Mock Activities
-        addActivityItem("👨‍🎓", "Student Added: Rahul Kumar (ST0001)", "01-Jun-2026 10:00 AM");
-        addActivityItem("📅", "Attendance Session marked: 95 Present / 25 Absent", "18-Jun-2026 09:30 AM");
-        addActivityItem("📚", "Course Completion calculated for DM enrollment", "18-Jun-2026 02:45 PM");
+        // Initial Activities
+        addActivityItem("🚀", "System initialized", "Real-time log active");
 
         recentActivitiesBox.getChildren().addAll(lblActTitle, activityListContainer);
 
@@ -501,10 +500,10 @@ public class DashboardView extends BorderPane {
         gpRules.add(h3, 2, 0);
         gpRules.add(h4, 3, 0);
 
-        h1.setStyle("-fx-font-weight: bold; -fx-text-fill: #FFFFFF;");
-        h2.setStyle("-fx-font-weight: bold; -fx-text-fill: #FFFFFF;");
-        h3.setStyle("-fx-font-weight: bold; -fx-text-fill: #FFFFFF;");
-        h4.setStyle("-fx-font-weight: bold; -fx-text-fill: #FFFFFF;");
+        h1.setStyle("-fx-font-weight: bold; -fx-text-fill: -text-main;");
+        h2.setStyle("-fx-font-weight: bold; -fx-text-fill: -text-main;");
+        h3.setStyle("-fx-font-weight: bold; -fx-text-fill: -text-main;");
+        h4.setStyle("-fx-font-weight: bold; -fx-text-fill: -text-main;");
 
         // Row 1
         Label r1_c1 = new Label("DM");
@@ -584,14 +583,11 @@ public class DashboardView extends BorderPane {
     private HBox createRoleDetailLine(String role, String desc) {
         HBox box = new HBox(12);
         Label badge = new Label(role);
-        badge.setStyle(
-                "-fx-font-weight: bold; -fx-background-color: rgba(59, 130, 246, 0.15); -fx-text-fill: #60A5FA; -fx-padding: 3 8; -fx-background-radius: 6; -fx-font-size: 11px; -fx-border-color: rgba(59, 130, 246, 0.3); -fx-border-radius: 6;");
+        badge.getStyleClass().add("role-badge");
         if ("Trainer".equals(role)) {
-            badge.setStyle(
-                    "-fx-font-weight: bold; -fx-background-color: rgba(245, 158, 11, 0.15); -fx-text-fill: #FBBF24; -fx-padding: 3 8; -fx-background-radius: 6; -fx-font-size: 11px; -fx-border-color: rgba(245, 158, 11, 0.3); -fx-border-radius: 6;");
+            badge.getStyleClass().add("role-badge-trainer");
         } else if ("Viewer".equals(role)) {
-            badge.setStyle(
-                    "-fx-font-weight: bold; -fx-background-color: rgba(6, 182, 212, 0.15); -fx-text-fill: #22D3EE; -fx-padding: 3 8; -fx-background-radius: 6; -fx-font-size: 11px; -fx-border-color: rgba(6, 182, 212, 0.3); -fx-border-radius: 6;");
+            badge.getStyleClass().add("role-badge-viewer");
         }
 
         Label labelDesc = new Label(desc);
@@ -641,14 +637,25 @@ public class DashboardView extends BorderPane {
 
     private void updateDashboardMetrics() {
         // Total students
-        int total = studentsList.size() + 119;
+        int total = studentsList.size();
         if (lblTotalStudentsVal != null) {
             lblTotalStudentsVal.setText(String.valueOf(total));
         }
 
-        // Present & Absent counts from attendance data
-        int presentCount = presentStudentIds.size() + 94; // Adjust with offset
-        int absentCount = total - presentCount;
+        // Present & Absent counts from today's attendance data (if any loaded), or fall back to checking in-memory state
+        String todayStr = LocalDate.now().toString();
+        long presentCount = attendanceList.stream()
+                .filter(a -> todayStr.equals(a.getDate()) && "Present".equalsIgnoreCase(a.getStatus()))
+                .count();
+        long absentCount = attendanceList.stream()
+                .filter(a -> todayStr.equals(a.getDate()) && "Absent".equalsIgnoreCase(a.getStatus()))
+                .count();
+
+        // If no attendance records exist for today, calculate based on presentStudentIds list (marked in daily check-in) or overall status
+        if (presentCount == 0 && absentCount == 0) {
+            presentCount = presentStudentIds.size();
+            absentCount = total - presentCount;
+        }
 
         if (lblPresentVal != null) {
             lblPresentVal.setText(String.valueOf(presentCount));
@@ -658,8 +665,7 @@ public class DashboardView extends BorderPane {
         }
 
         // Ready for Exam counts
-        long localReadyCount = studentsList.stream().filter(s -> "Ready For Exam".equals(s.getStatus())).count();
-        long readyTotal = localReadyCount + 17; // Adjust with offset
+        long readyTotal = studentsList.stream().filter(s -> "Ready For Exam".equalsIgnoreCase(s.getStatus())).count();
 
         if (lblReadyVal != null) {
             lblReadyVal.setText(String.valueOf(readyTotal));
@@ -698,11 +704,11 @@ public class DashboardView extends BorderPane {
         // Progress Overlay
         loadingOverlay = new VBox(15);
         loadingOverlay.setAlignment(Pos.CENTER);
-        loadingOverlay.setStyle("-fx-background-color: rgba(15, 23, 42, 0.75); -fx-background-radius: 12;");
+        loadingOverlay.getStyleClass().add("loading-overlay");
         ProgressIndicator progressIndicator = new ProgressIndicator();
         progressIndicator.setStyle("-fx-progress-color: -primary-color;");
         Label lblLoading = new Label("Loading students from Google Sheets...");
-        lblLoading.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;");
+        lblLoading.getStyleClass().add("loading-text");
         loadingOverlay.getChildren().addAll(progressIndicator, lblLoading);
         loadingOverlay.setVisible(false);
 
@@ -1108,7 +1114,7 @@ public class DashboardView extends BorderPane {
         container.setPadding(new Insets(24));
         container.getStyleClass().add("root");
 
-        Label lblTitle = new Label("Mark Student Attendance");
+        Label lblTitle = new Label("Attendance Records");
         lblTitle.setStyle("-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: -text-main;");
 
         VBox contentBox = new VBox(15);
@@ -1119,112 +1125,96 @@ public class DashboardView extends BorderPane {
         HBox bar = new HBox(15);
         bar.setAlignment(Pos.CENTER_LEFT);
 
-        Label lblDateSelect = new Label("Attendance Date:");
-        lblDateSelect.getStyleClass().add("form-label");
-        DatePicker dpAttendance = new DatePicker(LocalDate.now());
-        dpAttendance.setDisable(true); // Dummy display today only
+        Label lblSubtitle = new Label("Historical Attendance Log");
+        lblSubtitle.setStyle("-fx-font-weight: bold; -fx-text-fill: -text-muted; -fx-font-size: 14px;");
 
-        Label lblStatsSummary = new Label(String.format("Summary Today: %d Present / %d Absent",
-                presentStudentIds.size() + 94,
-                (studentsList.size() + 119) - (presentStudentIds.size() + 94)));
-        lblStatsSummary.setStyle("-fx-font-weight: bold; -fx-text-fill: -primary-color;");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        bar.getChildren().addAll(lblDateSelect, dpAttendance, lblStatsSummary);
+        Button btnRefresh = new Button("Refresh Data 🔄");
+        btnRefresh.getStyleClass().addAll("btn", "btn-primary");
+        btnRefresh.setOnAction(e -> refreshAttendanceData());
 
-        // Attendance Table View
+        bar.getChildren().addAll(lblSubtitle, spacer, btnRefresh);
+
+        StackPane tableContainer = new StackPane();
+        VBox.setVgrow(tableContainer, Priority.ALWAYS);
+
         attendanceTable = new TableView<>();
         attendanceTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-        VBox.setVgrow(attendanceTable, Priority.ALWAYS);
 
-        TableColumn<Student, String> colAttId = new TableColumn<>("ID");
-        colAttId.setCellValueFactory(data -> data.getValue().idProperty());
-        colAttId.setPrefWidth(100);
+        // Progress Overlay
+        loadingOverlayAttendance = new VBox(15);
+        loadingOverlayAttendance.setAlignment(Pos.CENTER);
+        loadingOverlayAttendance.getStyleClass().add("loading-overlay");
+        ProgressIndicator progressIndicator = new ProgressIndicator();
+        progressIndicator.setStyle("-fx-progress-color: -primary-color;");
+        Label lblLoading = new Label("Loading attendance records from Google Sheets...");
+        lblLoading.getStyleClass().add("loading-text");
+        loadingOverlayAttendance.getChildren().addAll(progressIndicator, lblLoading);
+        loadingOverlayAttendance.setVisible(false);
 
-        TableColumn<Student, String> colAttName = new TableColumn<>("Student Name");
-        colAttName.setCellValueFactory(data -> data.getValue().nameProperty());
-        colAttName.setPrefWidth(250);
+        tableContainer.getChildren().addAll(attendanceTable, loadingOverlayAttendance);
 
-        TableColumn<Student, String> colAttCourse = new TableColumn<>("Course");
-        colAttCourse.setCellValueFactory(data -> data.getValue().courseProperty());
-        colAttCourse.setPrefWidth(120);
+        // Setup columns in the exact order requested: Attendance_ID, Date, Student_ID, Batch_ID, Status, Marked_By, Marked_Time
+        TableColumn<Attendance, String> colAttId = new TableColumn<>("Attendance_ID");
+        colAttId.setCellValueFactory(data -> data.getValue().attendanceIdProperty());
+        colAttId.setPrefWidth(120);
 
-        TableColumn<Student, String> colAttBatch = new TableColumn<>("Batch");
-        colAttBatch.setCellValueFactory(data -> data.getValue().batchProperty());
-        colAttBatch.setPrefWidth(150);
+        TableColumn<Attendance, String> colDate = new TableColumn<>("Date");
+        colDate.setCellValueFactory(data -> data.getValue().dateProperty());
+        colDate.setPrefWidth(120);
 
-        // Action Column: Present/Absent buttons
-        TableColumn<Student, Void> colActions = new TableColumn<>("Daily Check-in");
-        colActions.setPrefWidth(220);
-        colActions.setCellFactory(column -> new TableCell<Student, Void>() {
-            private final ToggleButton btnPresent = new ToggleButton("Present");
-            private final ToggleButton btnAbsent = new ToggleButton("Absent");
-            private final ToggleGroup group = new ToggleGroup();
-            private final HBox pane = new HBox(10, btnPresent, btnAbsent);
+        TableColumn<Attendance, String> colStudentId = new TableColumn<>("Student_ID");
+        colStudentId.setCellValueFactory(data -> data.getValue().studentIdProperty());
+        colStudentId.setPrefWidth(120);
 
-            {
-                btnPresent.setToggleGroup(group);
-                btnAbsent.setToggleGroup(group);
-                pane.setAlignment(Pos.CENTER);
+        TableColumn<Attendance, String> colBatchId = new TableColumn<>("Batch_ID");
+        colBatchId.setCellValueFactory(data -> data.getValue().batchIdProperty());
+        colBatchId.setPrefWidth(100);
 
-                btnPresent.getStyleClass().add("btn");
-                btnAbsent.getStyleClass().add("btn");
-
-                btnPresent.setOnAction(e -> {
-                    Student s = getTableView().getItems().get(getIndex());
-                    if (!presentStudentIds.contains(s.getId())) {
-                        presentStudentIds.add(s.getId());
-                    }
-                    btnPresent.setStyle("-fx-background-color: -success-color; -fx-text-fill: white;");
-                    btnAbsent.setStyle("");
-                    updateDashboardMetrics();
-                    lblStatsSummary.setText(String.format("Summary Today: %d Present / %d Absent",
-                            presentStudentIds.size() + 94,
-                            (studentsList.size() + 119) - (presentStudentIds.size() + 94)));
-                });
-
-                btnAbsent.setOnAction(e -> {
-                    Student s = getTableView().getItems().get(getIndex());
-                    presentStudentIds.remove(s.getId());
-                    btnAbsent.setStyle("-fx-background-color: -danger-color; -fx-text-fill: white;");
-                    btnPresent.setStyle("");
-                    updateDashboardMetrics();
-                    lblStatsSummary.setText(String.format("Summary Today: %d Present / %d Absent",
-                            presentStudentIds.size() + 94,
-                            (studentsList.size() + 119) - (presentStudentIds.size() + 94)));
-                });
-            }
-
+        TableColumn<Attendance, String> colStatus = new TableColumn<>("Status");
+        colStatus.setCellValueFactory(data -> data.getValue().statusProperty());
+        colStatus.setPrefWidth(120);
+        colStatus.setCellFactory(column -> new TableCell<Attendance, String>() {
             @Override
-            protected void updateItem(Void item, boolean empty) {
+            protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty) {
+                if (empty || item == null) {
+                    setText(null);
                     setGraphic(null);
                 } else {
-                    Student s = getTableView().getItems().get(getIndex());
-                    if (presentStudentIds.contains(s.getId())) {
-                        btnPresent.setSelected(true);
-                        btnPresent.setStyle("-fx-background-color: -success-color; -fx-text-fill: white;");
-                        btnAbsent.setStyle("");
-                    } else {
-                        btnAbsent.setSelected(true);
-                        btnAbsent.setStyle("-fx-background-color: -danger-color; -fx-text-fill: white;");
-                        btnPresent.setStyle("");
+                    Label badge = new Label(item);
+                    badge.getStyleClass().add("status-badge");
+                    switch (item.toLowerCase()) {
+                        case "present":
+                            badge.getStyleClass().add("status-active");
+                            break;
+                        case "absent":
+                            badge.getStyleClass().add("status-inactive");
+                            break;
+                        default:
+                            badge.getStyleClass().add("status-ready");
+                            break;
                     }
-
-                    // Disable editing if viewer
-                    boolean isViewer = "Viewer".equals(currentRole);
-                    btnPresent.setDisable(isViewer);
-                    btnAbsent.setDisable(isViewer);
-
-                    setGraphic(pane);
+                    setGraphic(badge);
+                    setText(null);
                 }
             }
         });
 
-        attendanceTable.getColumns().addAll(colAttId, colAttName, colAttCourse, colAttBatch, colActions);
-        attendanceTable.setItems(studentsList);
+        TableColumn<Attendance, String> colMarkedBy = new TableColumn<>("Marked_By");
+        colMarkedBy.setCellValueFactory(data -> data.getValue().markedByProperty());
+        colMarkedBy.setPrefWidth(150);
 
-        contentBox.getChildren().addAll(bar, attendanceTable);
+        TableColumn<Attendance, String> colMarkedTime = new TableColumn<>("Marked_Time");
+        colMarkedTime.setCellValueFactory(data -> data.getValue().markedTimeProperty());
+        colMarkedTime.setPrefWidth(180);
+
+        attendanceTable.getColumns().addAll(colAttId, colDate, colStudentId, colBatchId, colStatus, colMarkedBy, colMarkedTime);
+        attendanceTable.setItems(attendanceList);
+
+        contentBox.getChildren().addAll(bar, tableContainer);
         container.getChildren().addAll(lblTitle, contentBox);
 
         attendancePanel = new ScrollPane(container);
@@ -1273,8 +1263,7 @@ public class DashboardView extends BorderPane {
 
     private VBox createCourseDetailsCard(String code, String title, String dur, String details) {
         VBox box = new VBox(12);
-        box.setStyle(
-                "-fx-background-color: #FFFFFF; -fx-padding: 24; -fx-background-radius: 16; -fx-border-color: -border-color; -fx-border-radius: 16; -fx-pref-width: 350; -fx-effect: dropshadow(three-pass-box, rgba(15, 23, 42, 0.04), 16, 0, 0, 8);");
+        box.getStyleClass().add("course-details-card");
 
         Label lblCode = new Label(code + " - " + title);
         lblCode.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: -primary-color;");
@@ -1374,8 +1363,7 @@ public class DashboardView extends BorderPane {
 
     private HBox createUserProfileRow(String name, String role, String desc) {
         HBox box = new HBox(20);
-        box.setStyle(
-                "-fx-background-color: rgba(255, 255, 255, 0.02); -fx-padding: 16; -fx-background-radius: 12; -fx-alignment: center-left; -fx-border-color: rgba(255, 255, 255, 0.05); -fx-border-width: 1;");
+        box.getStyleClass().add("user-profile-row");
 
         Circle av = new Circle(15, Color.web("#2563EB"));
         Label avText = new Label(role.substring(0, 1));
@@ -1393,14 +1381,11 @@ public class DashboardView extends BorderPane {
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Label badge = new Label(role);
-        badge.setStyle(
-                "-fx-font-weight: bold; -fx-background-color: rgba(59, 130, 246, 0.15); -fx-text-fill: #60A5FA; -fx-padding: 3 8; -fx-background-radius: 6; -fx-border-color: rgba(59, 130, 246, 0.3); -fx-border-radius: 6;");
+        badge.getStyleClass().add("role-badge");
         if ("Trainer".equals(role)) {
-            badge.setStyle(
-                    "-fx-font-weight: bold; -fx-background-color: rgba(245, 158, 11, 0.15); -fx-text-fill: #FBBF24; -fx-padding: 3 8; -fx-background-radius: 6; -fx-border-color: rgba(245, 158, 11, 0.3); -fx-border-radius: 6;");
+            badge.getStyleClass().add("role-badge-trainer");
         } else if ("Viewer".equals(role)) {
-            badge.setStyle(
-                    "-fx-font-weight: bold; -fx-background-color: rgba(6, 182, 212, 0.15); -fx-text-fill: #22D3EE; -fx-padding: 3 8; -fx-background-radius: 6; -fx-border-color: rgba(6, 182, 212, 0.3); -fx-border-radius: 6;");
+            badge.getStyleClass().add("role-badge-viewer");
         }
 
         box.getChildren().addAll(sp, txts, spacer, badge);
@@ -1524,6 +1509,54 @@ public class DashboardView extends BorderPane {
 
             showErrorAlert("Data Load Error",
                 "Failed to connect to Google Sheets",
+                "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace + "\n\nPlease check your network connection and credentials.");
+        });
+
+        new Thread(loadTask).start();
+    }
+
+    public void refreshAttendanceData() {
+        if (loadingOverlayAttendance.isVisible()) {
+            return;
+        }
+        loadingOverlayAttendance.setVisible(true);
+        attendanceTable.setDisable(true);
+
+        javafx.concurrent.Task<List<Attendance>> loadTask = new javafx.concurrent.Task<>() {
+            @Override
+            protected List<Attendance> call() throws Exception {
+                GoogleSheetsService service = new GoogleSheetsService();
+                return service.getAttendanceRecords();
+            }
+        };
+
+        loadTask.setOnSucceeded(e -> {
+            List<Attendance> loaded = loadTask.getValue();
+            attendanceList.clear();
+            attendanceList.addAll(loaded);
+
+            loadingOverlayAttendance.setVisible(false);
+            attendanceTable.setDisable(false);
+            addActivity("🔄", "Refreshed " + loaded.size() + " attendance records from Google Sheets");
+        });
+
+        loadTask.setOnFailed(e -> {
+            Throwable ex = loadTask.getException();
+            ex.printStackTrace();
+
+            loadingOverlayAttendance.setVisible(false);
+            attendanceTable.setDisable(false);
+
+            java.io.StringWriter sw = new java.io.StringWriter();
+            java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+            ex.printStackTrace(pw);
+            String stackTrace = sw.toString();
+            if (stackTrace.length() > 800) {
+                stackTrace = stackTrace.substring(0, 800) + "\n...";
+            }
+
+            showErrorAlert("Data Load Error",
+                "Failed to connect to Google Sheets Attendance Sheet",
                 "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace + "\n\nPlease check your network connection and credentials.");
         });
 

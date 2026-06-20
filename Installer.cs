@@ -24,12 +24,12 @@ public class InstallerForm : Form {
     private Label statusLabel;
     private CheckBox shortcutCheckBox;
 
-    // Matte-Black & Blue Accent Color scheme matching YouvakendraSM styling
-    private static readonly Color COLOR_BG_APP = Color.FromArgb(0x12, 0x12, 0x12);
-    private static readonly Color COLOR_BG_CARD = Color.FromArgb(0x1C, 0x1C, 0x1E);
-    private static readonly Color COLOR_PRIMARY = Color.FromArgb(0x3B, 0x82, 0xF6);
-    private static readonly Color COLOR_TEXT_MAIN = Color.FromArgb(0xF8, 0xFA, 0xFC);
-    private static readonly Color COLOR_TEXT_MUTED = Color.FromArgb(0x94, 0xA3, 0xB8);
+    // Modern Light theme palette matching YouvakendraSM styling
+    private static readonly Color COLOR_BG_APP = Color.FromArgb(0xF8, 0xFA, 0xFC);
+    private static readonly Color COLOR_BG_CARD = Color.FromArgb(0xFF, 0xFF, 0xFF);
+    private static readonly Color COLOR_PRIMARY = Color.FromArgb(0x25, 0x63, 0xEB);
+    private static readonly Color COLOR_TEXT_MAIN = Color.FromArgb(0x0F, 0x17, 0x2A);
+    private static readonly Color COLOR_TEXT_MUTED = Color.FromArgb(0x64, 0x74, 0x8B);
 
     public InstallerForm() {
         this.Text = "YouvakendraSM Installer";
@@ -52,7 +52,7 @@ public class InstallerForm : Form {
             Location = new Point(24, 24),
             Size = new Size(440, 32),
             Font = new Font("Segoe UI", 16, FontStyle.Bold),
-            ForeColor = Color.White
+            ForeColor = COLOR_TEXT_MAIN
         };
 
         pathLabel = new Label() {
@@ -70,7 +70,7 @@ public class InstallerForm : Form {
             Size = new Size(346, 25),
             Font = new Font("Segoe UI", 10, FontStyle.Regular),
             BackColor = COLOR_BG_CARD,
-            ForeColor = Color.White,
+            ForeColor = COLOR_TEXT_MAIN,
             BorderStyle = BorderStyle.FixedSingle
         };
 
@@ -80,8 +80,8 @@ public class InstallerForm : Form {
             Size = new Size(82, 27),
             Font = new Font("Segoe UI", 9, FontStyle.Regular),
             FlatStyle = FlatStyle.Flat,
-            BackColor = Color.FromArgb(0x2A, 0x2A, 0x2C),
-            ForeColor = Color.White
+            BackColor = Color.FromArgb(0xE2, 0xE8, 0xF0),
+            ForeColor = COLOR_TEXT_MAIN
         };
         browseButton.FlatAppearance.BorderSize = 0;
         browseButton.Click += BrowseClick;

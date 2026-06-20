@@ -19,18 +19,18 @@ public class UpdateDialog extends JDialog {
     private ModernButton btnUpdate;
     private ModernButton btnLater;
 
-    // Palette colors matching styles.css
-    private static final Color COLOR_BG_APP = new Color(0x12, 0x12, 0x12);
-    private static final Color COLOR_BG_CARD = new Color(0x1C, 0x1C, 0x1E);
-    private static final Color COLOR_TEXT_MAIN = new Color(0xF8, 0xFA, 0xFC);
-    private static final Color COLOR_TEXT_MUTED = new Color(0x94, 0xA3, 0xB8);
-    private static final Color COLOR_PRIMARY = new Color(0x3B, 0x82, 0xF6);
-    private static final Color COLOR_PRIMARY_HOVER = new Color(0x60, 0xA5, 0xFA);
+    // Palette colors matching styles.css (Light Theme)
+    private static final Color COLOR_BG_APP = new Color(0xF8, 0xFA, 0xFC);
+    private static final Color COLOR_BG_CARD = new Color(0xFF, 0xFF, 0xFF);
+    private static final Color COLOR_TEXT_MAIN = new Color(0x0F, 0x17, 0x2A);
+    private static final Color COLOR_TEXT_MUTED = new Color(0x64, 0x74, 0x8B);
+    private static final Color COLOR_PRIMARY = new Color(0x25, 0x63, 0xEB);
+    private static final Color COLOR_PRIMARY_HOVER = new Color(0x3B, 0x82, 0xF6);
     private static final Color COLOR_PRIMARY_ACTIVE = new Color(0x1D, 0x4E, 0xD8);
-    private static final Color COLOR_SECONDARY = new Color(0x2A, 0x2A, 0x2C);
-    private static final Color COLOR_SECONDARY_HOVER = new Color(0x3E, 0x3E, 0x40);
-    private static final Color COLOR_SECONDARY_ACTIVE = new Color(0x1C, 0x1C, 0x1E);
-    private static final Color COLOR_SUCCESS = new Color(0x10, 0xB9, 0x81);
+    private static final Color COLOR_SECONDARY = new Color(0xE2, 0xE8, 0xF0);
+    private static final Color COLOR_SECONDARY_HOVER = new Color(0xCB, 0xD5, 0xEB);
+    private static final Color COLOR_SECONDARY_ACTIVE = new Color(0x94, 0xA3, 0xB8);
+    private static final Color COLOR_SUCCESS = new Color(0x05, 0x96, 0x69);
     private static final Color COLOR_DANGER = new Color(0xEF, 0x44, 0x44);
 
     public UpdateDialog(Frame owner, String currentVersion, String latestVersion) {
@@ -85,7 +85,7 @@ public class UpdateDialog extends JDialog {
         JPanel versionCard = new JPanel(new GridLayout(2, 2, 8, 8));
         versionCard.setBackground(COLOR_BG_CARD);
         versionCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(0xFF, 0xFF, 0xFF, 12), 1, true),
+                BorderFactory.createLineBorder(new Color(0x0F, 0x17, 0x2A, 20), 1, true),
                 BorderFactory.createEmptyBorder(12, 16, 12, 16)
         ));
         versionCard.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -117,12 +117,12 @@ public class UpdateDialog extends JDialog {
         buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(COLOR_BG_APP);
 
-        btnLater = new ModernButton("Later", COLOR_SECONDARY, COLOR_SECONDARY_HOVER, COLOR_SECONDARY_ACTIVE);
+        btnLater = new ModernButton("Later", COLOR_SECONDARY, COLOR_SECONDARY_HOVER, COLOR_SECONDARY_ACTIVE, COLOR_TEXT_MAIN);
         btnLater.setPreferredSize(new Dimension(100, 36));
         btnLater.addActionListener(e -> dispose());
         buttonPanel.add(btnLater);
 
-        btnUpdate = new ModernButton("Update Now", COLOR_PRIMARY, COLOR_PRIMARY_HOVER, COLOR_PRIMARY_ACTIVE);
+        btnUpdate = new ModernButton("Update Now", COLOR_PRIMARY, COLOR_PRIMARY_HOVER, COLOR_PRIMARY_ACTIVE, Color.WHITE);
         btnUpdate.setPreferredSize(new Dimension(120, 36));
         btnUpdate.addActionListener(e -> startUpdateProcess());
         buttonPanel.add(btnUpdate);
@@ -225,7 +225,7 @@ public class UpdateDialog extends JDialog {
         errorActionPanel.setBackground(COLOR_BG_APP);
         errorActionPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        ModernButton btnClose = new ModernButton("Close", COLOR_SECONDARY, COLOR_SECONDARY_HOVER, COLOR_SECONDARY_ACTIVE);
+        ModernButton btnClose = new ModernButton("Close", COLOR_SECONDARY, COLOR_SECONDARY_HOVER, COLOR_SECONDARY_ACTIVE, COLOR_TEXT_MAIN);
         btnClose.setPreferredSize(new Dimension(100, 32));
         btnClose.addActionListener(e -> dispose());
         errorActionPanel.add(btnClose);
@@ -244,7 +244,7 @@ public class UpdateDialog extends JDialog {
         private final Color hoverColor;
         private final Color activeColor;
 
-        public ModernButton(String text, Color normal, Color hover, Color active) {
+        public ModernButton(String text, Color normal, Color hover, Color active, Color textCol) {
             super(text);
             this.normalColor = normal;
             this.hoverColor = hover;
@@ -253,7 +253,7 @@ public class UpdateDialog extends JDialog {
             setContentAreaFilled(false);
             setFocusPainted(false);
             setBorderPainted(false);
-            setForeground(COLOR_TEXT_MAIN);
+            setForeground(textCol);
             setFont(new Font("Segoe UI", Font.BOLD, 13));
             setCursor(new Cursor(Cursor.HAND_CURSOR));
 

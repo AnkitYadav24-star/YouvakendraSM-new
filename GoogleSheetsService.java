@@ -79,6 +79,52 @@ public class GoogleSheetsService {
         return students;
     }
 
+    public List<Attendance> getAttendanceRecords() throws IOException, GeneralSecurityException {
+        Sheets service = getSheetsService();
+        String range = Config.ATTENDANCE_SHEET_NAME + "!A:G";
+        ValueRange response = service.spreadsheets().values()
+                .get(Config.SPREADSHEET_ID, range)
+                .execute();
+        List<List<Object>> values = response.getValues();
+        List<Attendance> records = new ArrayList<>();
+
+        if (values == null || values.isEmpty()) {
+            return records;
+        }
+
+        // Row 0 is the header row, start loop from 1 to read actual data rows
+        for (int i = 1; i < values.size(); i++) {
+            List<Object> row = values.get(i);
+            
+            // Check if the row is completely empty
+            boolean isEmptyRow = true;
+            for (Object cell : row) {
+                if (cell != null && !cell.toString().trim().isEmpty()) {
+                    isEmptyRow = false;
+                    break;
+                }
+            }
+            if (isEmptyRow) {
+                continue;
+            }
+
+            // Convert row into Attendance object safely
+            String attendanceId = getSafeValue(row, 0);
+            String date = getSafeValue(row, 1);
+            String studentId = getSafeValue(row, 2);
+            String batchId = getSafeValue(row, 3);
+            String status = getSafeValue(row, 4);
+            String markedBy = getSafeValue(row, 5);
+            String markedTime = getSafeValue(row, 6);
+
+            records.add(new Attendance(
+                attendanceId, date, studentId, batchId, status, markedBy, markedTime
+            ));
+        }
+
+        return records;
+    }
+
     private String getSafeValue(List<Object> row, int index) {
         if (index < row.size() && row.get(index) != null) {
             return row.get(index).toString().trim();

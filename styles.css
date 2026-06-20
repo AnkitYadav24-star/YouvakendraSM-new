@@ -1,40 +1,40 @@
 /* ==========================================================================
-   Minimalist Dark Design Theme Variables & Tokens
+   Minimalist Modern Light Design Theme Variables & Tokens
    ========================================================================== */
 .root {
     /* Color Palette */
-    -primary-color: #3B82F6;
-    /* Accent Blue */
-    -primary-hover: #60A5FA;
+    -primary-color: #2563EB;
+    /* Premium Indigo/Blue */
+    -primary-hover: #3B82F6;
     -primary-active: #1D4ED8;
-    -primary-light: rgba(59, 130, 246, 0.12);
+    -primary-light: rgba(37, 99, 235, 0.06);
 
     -success-color: #10B981;
     /* Present Green Accent */
-    -success-hover: #34D399;
+    -success-hover: #059669;
     -warning-color: #F59E0B;
     /* Warning Amber Accent */
-    -warning-hover: #FBBF24;
+    -warning-hover: #D97706;
     -danger-color: #EF4444;
     /* Absent Red Accent */
-    -danger-hover: #F87171;
+    -danger-hover: #DC2626;
     -purple-accent: #8B5CF6;
-    -cyan-accent: #06B6D4;
+    -cyan-accent: #0891B2;
 
-    /* Charcoal / Matte Black Backgrounds */
-    -bg-app: #121212;
-    /* Matte Black Background */
-    -bg-card: rgba(30, 30, 30, 0.7);
-    /* Subtle Translucent Glass Card */
-    -bg-sidebar: #1C1C1E;
-    /* Subtle Different Shade of Gray */
+    /* Light/White Backgrounds */
+    -bg-app: #F8FAFC;
+    /* Soft slate background */
+    -bg-card: #FFFFFF;
+    /* Pure white elevated cards */
+    -bg-sidebar: #F1F5F9;
+    /* Light gray sidebar */
 
-    -text-main: #F8FAFC;
-    /* Slate-50 (Crisp White-Gray) */
-    -text-muted: #94A3B8;
-    /* Slate-400 (Secondary Muted) */
-    -border-color: rgba(255, 255, 255, 0.05);
-    /* Very Subtle White Outline */
+    -text-main: #0F172A;
+    /* Slate-900 (Crisp Charcoal) */
+    -text-muted: #64748B;
+    /* Slate-500 (Secondary Muted) */
+    -border-color: rgba(15, 23, 42, 0.08);
+    /* Subtle outline */
 
     /* Typography */
     -fx-font-family: 'Inter', 'Segoe UI', sans-serif;
@@ -58,12 +58,12 @@
 }
 
 .scroll-bar .thumb {
-    -fx-background-color: rgba(255, 255, 255, 0.06);
+    -fx-background-color: rgba(15, 23, 42, 0.1);
     -fx-background-radius: 10;
 }
 
 .scroll-bar .thumb:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.15);
+    -fx-background-color: rgba(15, 23, 42, 0.2);
 }
 
 .scroll-bar .increment-button,
@@ -77,11 +77,11 @@
 }
 
 /* ==========================================================================
-   Subtle Gray Sidebar & Minimalist SVG Icons
+   Light Gray Sidebar & Minimalist SVG Icons
    ========================================================================== */
 .sidebar {
     -fx-background-color: -bg-sidebar;
-    -fx-border-color: transparent rgba(255, 255, 255, 0.03) transparent transparent;
+    -fx-border-color: transparent -border-color transparent transparent;
     -fx-border-width: 0 1 0 0;
     -fx-padding: 16 0;
 }
@@ -93,7 +93,7 @@
 .sidebar-logo {
     -fx-font-size: 18px;
     -fx-font-weight: bold;
-    -fx-text-fill: #FFFFFF;
+    -fx-text-fill: -text-main;
 }
 
 .sidebar-button {
@@ -110,14 +110,14 @@
 }
 
 .sidebar-button:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.03);
-    -fx-text-fill: #FFFFFF;
+    -fx-background-color: rgba(15, 23, 42, 0.04);
+    -fx-text-fill: -text-main;
 }
 
 .sidebar-button-active {
-    -fx-background-color: rgba(255, 255, 255, 0.05);
+    -fx-background-color: -primary-light;
     /* Subtle active background */
-    -fx-text-fill: #FFFFFF;
+    -fx-text-fill: -primary-color;
     -fx-font-weight: bold;
     -fx-border-color: transparent transparent transparent -primary-color;
     /* Left blue highlight bar */
@@ -134,7 +134,7 @@
 }
 
 .sidebar-button:hover .sidebar-icon {
-    -fx-stroke: #FFFFFF;
+    -fx-stroke: -text-main;
 }
 
 .sidebar-button-active .sidebar-icon {
@@ -142,9 +142,9 @@
 }
 
 .sidebar-toggle {
-    -fx-background-color: rgba(255, 255, 255, 0.03);
+    -fx-background-color: rgba(15, 23, 42, 0.03);
     -fx-text-fill: -text-muted;
-    -fx-border-color: rgba(255, 255, 255, 0.05);
+    -fx-border-color: -border-color;
     -fx-cursor: hand;
     -fx-background-radius: 6;
     -fx-border-radius: 6;
@@ -152,8 +152,8 @@
 }
 
 .sidebar-toggle:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.08);
-    -fx-text-fill: #FFFFFF;
+    -fx-background-color: rgba(15, 23, 42, 0.06);
+    -fx-text-fill: -text-main;
 }
 
 /* ==========================================================================
@@ -161,29 +161,29 @@
    ========================================================================== */
 .header {
     -fx-background-color: -bg-app;
-    -fx-border-color: transparent transparent rgba(255, 255, 255, 0.03) transparent;
+    -fx-border-color: transparent transparent -border-color transparent;
     -fx-border-width: 0 0 1 0;
     -fx-padding: 16 32;
 }
 
 .search-field {
-    -fx-background-color: rgba(255, 255, 255, 0.03);
+    -fx-background-color: rgba(15, 23, 42, 0.03);
     -fx-background-radius: 20;
     -fx-border-radius: 20;
-    -fx-border-color: rgba(255, 255, 255, 0.06);
+    -fx-border-color: -border-color;
     -fx-padding: 8 16 8 36;
     -fx-prompt-text-fill: -text-muted;
     -fx-text-fill: -text-main;
 }
 
 .search-field:focused {
-    -fx-background-color: rgba(30, 30, 30, 0.8);
+    -fx-background-color: #FFFFFF;
     -fx-border-color: -primary-color;
 }
 
 .header-icon-btn {
-    -fx-background-color: rgba(255, 255, 255, 0.03);
-    -fx-border-color: rgba(255, 255, 255, 0.05);
+    -fx-background-color: rgba(15, 23, 42, 0.03);
+    -fx-border-color: -border-color;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
     -fx-text-fill: -text-main;
@@ -192,7 +192,7 @@
 }
 
 .header-icon-btn:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.08);
+    -fx-background-color: rgba(15, 23, 42, 0.06);
 }
 
 .avatar-circle {
@@ -208,7 +208,7 @@
 .role-badge {
     -fx-background-color: -primary-light;
     -fx-text-fill: -primary-color;
-    -fx-border-color: rgba(59, 130, 246, 0.2);
+    -fx-border-color: rgba(37, 99, 235, 0.2);
     -fx-border-radius: 6;
     -fx-padding: 3 8;
     -fx-background-radius: 6;
@@ -229,7 +229,7 @@
 }
 
 /* ==========================================================================
-   KPI Metrics Cards (Glow / Soft Shadows)
+   KPI Metrics Cards (Elevated / Soft Shadows)
    ========================================================================== */
 .metric-card {
     -fx-background-color: -bg-card;
@@ -238,13 +238,13 @@
     -fx-border-color: -border-color;
     -fx-border-width: 1;
     -fx-padding: 24;
-    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.4), 16, 0, 0, 8);
+    -fx-effect: dropshadow(three-pass-box, rgba(15, 23, 42, 0.05), 16, 0, 0, 8);
 }
 
 .metric-card:hover {
     -fx-translate-y: -4px;
     /* subtle lift effect */
-    -fx-border-color: rgba(255, 255, 255, 0.1);
+    -fx-border-color: rgba(15, 23, 42, 0.15);
 }
 
 .metric-title {
@@ -261,30 +261,26 @@
 /* Colored accent values for metrics */
 .metric-card-primary .metric-value {
     -fx-text-fill: -primary-color;
-    /* Blue */
-    -fx-effect: dropshadow(three-pass-box, rgba(59, 130, 246, 0.2), 8, 0, 0, 0);
+    -fx-effect: dropshadow(three-pass-box, rgba(37, 99, 235, 0.15), 6, 0, 0, 0);
 }
 
 .metric-card-success .metric-value {
     -fx-text-fill: -success-color;
-    /* Green (Present) */
-    -fx-effect: dropshadow(three-pass-box, rgba(16, 185, 129, 0.2), 8, 0, 0, 0);
+    -fx-effect: dropshadow(three-pass-box, rgba(16, 185, 129, 0.15), 6, 0, 0, 0);
 }
 
 .metric-card-danger .metric-value {
     -fx-text-fill: -danger-color;
-    /* Red (Absent) */
-    -fx-effect: dropshadow(three-pass-box, rgba(239, 68, 68, 0.2), 8, 0, 0, 0);
+    -fx-effect: dropshadow(three-pass-box, rgba(239, 68, 68, 0.15), 6, 0, 0, 0);
 }
 
 .metric-card-warning .metric-value {
     -fx-text-fill: -purple-accent;
-    /* Purple/Amber Accent */
-    -fx-effect: dropshadow(three-pass-box, rgba(139, 92, 246, 0.2), 8, 0, 0, 0);
+    -fx-effect: dropshadow(three-pass-box, rgba(139, 92, 246, 0.15), 6, 0, 0, 0);
 }
 
 /* ==========================================================================
-   Glassmorphism Card Panels (Clutter-Free)
+   Modern Elevate Card Panels
    ========================================================================== */
 .content-card {
     -fx-background-color: -bg-card;
@@ -293,18 +289,18 @@
     -fx-border-color: -border-color;
     -fx-border-width: 1;
     -fx-padding: 24;
-    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.4), 16, 0, 0, 8);
+    -fx-effect: dropshadow(three-pass-box, rgba(15, 23, 42, 0.05), 16, 0, 0, 8);
 }
 
 .card-title {
     -fx-font-size: 16px;
     -fx-font-weight: bold;
-    -fx-text-fill: #FFFFFF;
+    -fx-text-fill: -text-main;
     -fx-padding: 0 0 16 0;
 }
 
 /* ==========================================================================
-   Minimalist Dark Inputs & Forms
+   Minimalist Inputs & Forms
    ========================================================================== */
 .form-label {
     -fx-font-size: 13px;
@@ -315,31 +311,31 @@
 .text-input,
 .combo-box,
 .date-picker {
-    -fx-background-color: rgba(0, 0, 0, 0.2);
-    /* Flat dark input background */
-    -fx-border-color: rgba(255, 255, 255, 0.08);
+    -fx-background-color: #FFFFFF;
+    /* Clean white input background */
+    -fx-border-color: -border-color;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
     -fx-padding: 8 12;
-    -fx-text-fill: #FFFFFF;
+    -fx-text-fill: -text-main;
 }
 
 .text-input:focused,
 .combo-box:focused,
 .date-picker:focused {
-    -fx-background-color: rgba(0, 0, 0, 0.4);
+    -fx-background-color: #FFFFFF;
     -fx-border-color: -primary-color;
-    -fx-effect: dropshadow(three-pass-box, rgba(59, 130, 246, 0.15), 6, 0, 0, 0);
+    -fx-effect: dropshadow(three-pass-box, rgba(37, 99, 235, 0.12), 6, 0, 0, 0);
 }
 
 .text-input[readonly] {
-    -fx-background-color: rgba(0, 0, 0, 0.1);
+    -fx-background-color: #F1F5F9;
     -fx-text-fill: -text-muted;
-    -fx-border-color: rgba(255, 255, 255, 0.02);
+    -fx-border-color: -border-color;
 }
 
 /* ==========================================================================
-   Buttons (Fluent & Clutter-Free)
+   Buttons (Fluent & Modern)
    ========================================================================== */
 .btn {
     -fx-cursor: hand;
@@ -360,14 +356,14 @@
 }
 
 .btn-secondary {
-    -fx-background-color: rgba(255, 255, 255, 0.02);
-    -fx-border-color: rgba(255, 255, 255, 0.06);
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: -border-color;
     -fx-border-width: 1;
     -fx-text-fill: -text-main;
 }
 
 .btn-secondary:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.06);
+    -fx-background-color: #F1F5F9;
 }
 
 .btn-success {
@@ -392,35 +388,34 @@
 }
 
 .table-view .column-header-background {
-    -fx-background-color: rgba(30, 30, 30, 0.8);
+    -fx-background-color: #F8FAFC;
     -fx-background-radius: 12 12 0 0;
 }
 
 .table-view .column-header {
     -fx-background-color: transparent;
     -fx-font-weight: bold;
-    -fx-text-fill: #FFFFFF;
+    -fx-text-fill: -text-main;
     -fx-size: 44;
-    -fx-border-color: transparent transparent rgba(255, 255, 255, 0.04) transparent;
+    -fx-border-color: transparent transparent -border-color transparent;
 }
 
 .table-view .table-row-cell {
-    -fx-background-color: rgba(30, 30, 30, 0.2);
-    -fx-border-color: transparent transparent rgba(255, 255, 255, 0.02) transparent;
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: transparent transparent -border-color transparent;
     -fx-padding: 8 0;
 }
 
 .table-view .table-row-cell:odd {
-    -fx-background-color: rgba(30, 30, 30, 0.4);
+    -fx-background-color: #F8FAFC;
 }
 
 .table-view .table-row-cell:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.02);
+    -fx-background-color: #F1F5F9;
 }
 
 .table-view .table-row-cell:selected {
     -fx-background-color: -primary-light;
-    -fx-text-fill: -primary-hover;
 }
 
 .table-view .cell {
@@ -428,11 +423,11 @@
 }
 
 .table-view .table-row-cell:selected .cell {
-    -fx-text-fill: #FFFFFF;
+    -fx-text-fill: -primary-color;
 }
 
 /* ==========================================================================
-   Neon Pill Status Badges
+   Neon Pill Status Badges (Light-Adapted)
    ========================================================================== */
 .status-badge {
     -fx-background-radius: 12;
@@ -443,49 +438,49 @@
 }
 
 .status-active {
-    -fx-background-color: rgba(16, 185, 129, 0.12);
+    -fx-background-color: rgba(16, 185, 129, 0.1);
     -fx-text-fill: -success-hover;
-    -fx-border-color: rgba(16, 185, 129, 0.25);
+    -fx-border-color: rgba(16, 185, 129, 0.2);
     -fx-border-width: 1;
     -fx-border-radius: 12;
 }
 
 .status-completed {
-    -fx-background-color: rgba(59, 130, 246, 0.12);
-    -fx-text-fill: -primary-hover;
-    -fx-border-color: rgba(59, 130, 246, 0.25);
+    -fx-background-color: rgba(37, 99, 235, 0.1);
+    -fx-text-fill: -primary-color;
+    -fx-border-color: rgba(37, 99, 235, 0.2);
     -fx-border-width: 1;
     -fx-border-radius: 12;
 }
 
 .status-ready {
-    -fx-background-color: rgba(245, 158, 11, 0.12);
+    -fx-background-color: rgba(245, 158, 11, 0.1);
     -fx-text-fill: -warning-hover;
-    -fx-border-color: rgba(245, 158, 11, 0.25);
+    -fx-border-color: rgba(245, 158, 11, 0.2);
     -fx-border-width: 1;
     -fx-border-radius: 12;
 }
 
 .status-passed {
-    -fx-background-color: rgba(16, 185, 129, 0.12);
+    -fx-background-color: rgba(16, 185, 129, 0.1);
     -fx-text-fill: -success-hover;
-    -fx-border-color: rgba(16, 185, 129, 0.25);
+    -fx-border-color: rgba(16, 185, 129, 0.2);
     -fx-border-width: 1;
     -fx-border-radius: 12;
 }
 
 .status-failed {
-    -fx-background-color: rgba(239, 68, 68, 0.12);
+    -fx-background-color: rgba(239, 68, 68, 0.1);
     -fx-text-fill: -danger-hover;
-    -fx-border-color: rgba(239, 68, 68, 0.25);
+    -fx-border-color: rgba(239, 68, 68, 0.2);
     -fx-border-width: 1;
     -fx-border-radius: 12;
 }
 
 .status-inactive {
-    -fx-background-color: rgba(148, 163, 184, 0.12);
+    -fx-background-color: rgba(100, 116, 139, 0.1);
     -fx-text-fill: -text-muted;
-    -fx-border-color: rgba(148, 163, 184, 0.25);
+    -fx-border-color: rgba(100, 116, 139, 0.25);
     -fx-border-width: 1;
     -fx-border-radius: 12;
 }
@@ -495,10 +490,10 @@
    ========================================================================== */
 .activity-item {
     -fx-padding: 12 16;
-    -fx-background-color: rgba(255, 255, 255, 0.01);
+    -fx-background-color: rgba(15, 23, 42, 0.02);
     -fx-background-radius: 8;
     -fx-border-radius: 8;
-    -fx-border-color: rgba(255, 255, 255, 0.03);
+    -fx-border-color: -border-color;
 }
 
 .activity-icon {
@@ -513,4 +508,38 @@
 .activity-time {
     -fx-font-size: 11px;
     -fx-text-fill: -text-muted;
+}
+
+/* ==========================================================================
+   Loading Overlay & Special Light-Mode Components
+   ========================================================================== */
+.loading-overlay {
+    -fx-background-color: rgba(255, 255, 255, 0.85);
+    -fx-background-radius: 12;
+    -fx-alignment: center;
+}
+
+.loading-text {
+    -fx-text-fill: -text-main;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+.course-details-card {
+    -fx-background-color: -bg-card;
+    -fx-padding: 24;
+    -fx-background-radius: 16;
+    -fx-border-color: -border-color;
+    -fx-border-radius: 16;
+    -fx-pref-width: 350;
+    -fx-effect: dropshadow(three-pass-box, rgba(15, 23, 42, 0.04), 16, 0, 0, 8);
+}
+
+.user-profile-row {
+    -fx-background-color: rgba(15, 23, 42, 0.02);
+    -fx-padding: 16;
+    -fx-background-radius: 12;
+    -fx-alignment: center-left;
+    -fx-border-color: rgba(15, 23, 42, 0.05);
+    -fx-border-width: 1;
 }
