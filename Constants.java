@@ -5,7 +5,7 @@ import java.io.IOException;
 
 public class Constants {
     // Current application version fallback
-    public static final String DEFAULT_CURRENT_VERSION = "1.0.4";
+    public static final String DEFAULT_CURRENT_VERSION = "1.0.6";
 
     // GitHub repository details
     public static final String GITHUB_OWNER = "AnkitYadav24-star";

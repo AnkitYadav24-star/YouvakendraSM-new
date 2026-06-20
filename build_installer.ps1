@@ -47,8 +47,9 @@ Copy-Item styles.css package_input/
 Copy-Item -Recurse assets package_input/
 New-Item -ItemType Directory -Path package_input/lib | Out-Null
 Copy-Item lib/* package_input/lib/ -Force
+Copy-Item YouvakendraSM/credencial.json package_input/ -Force -ErrorAction SilentlyContinue
 
-jpackage --type app-image --name YouvakendraSM --input package_input --main-jar YouvakendraSM.jar --main-class Main --icon assets/logo.ico --dest dist --module-path javafx-sdk-21.0.2\lib --add-modules javafx.controls,javafx.fxml
+jpackage --type app-image --name YouvakendraSM --input package_input --main-jar YouvakendraSM.jar --main-class Main --icon assets/logo.ico --dest dist --module-path javafx-sdk-21.0.2\lib --add-modules javafx.controls,javafx.fxml,java.logging,java.management,java.naming,java.sql,java.net.http,java.security.jgss,java.instrument
 if ($LASTEXITCODE -ne 0) {
     Write-Error "jpackage build failed."
     exit 1
@@ -57,6 +58,7 @@ if ($LASTEXITCODE -ne 0) {
 # Copy JavaFX native DLLs to the bundled runtime bin folder so that the JVM doesn't fail to load/launch on clean PCs.
 Write-Host "Copying JavaFX native DLLs to runtime bin folder..." -ForegroundColor Cyan
 Copy-Item javafx-sdk-21.0.2\bin\*.dll dist\YouvakendraSM\runtime\bin\ -Force
+Copy-Item YouvakendraSM/credencial.json dist/YouvakendraSM/ -Force -ErrorAction SilentlyContinue
 
 # Remove package_input temp folder
 Remove-Item -Recurse -Force package_input
