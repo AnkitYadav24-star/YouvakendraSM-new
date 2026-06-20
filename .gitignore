@@ -34,3 +34,16 @@ javafx-sdk-*/
 *.exe
 dist/
 build/
+
+# External libraries
+lib/
+
+# Credentials and secrets
+YouvakendraSM/credencial.json
+credencial.json
+
+# Temporary and local test logs
+run_output.txt
+manifest.txt
+run_output_*.txt
+

@@ -100,6 +100,10 @@ public class DashboardView extends BorderPane {
     // Attendance Table & Controls
     private TableView<Student> attendanceTable;
 
+    // Loading overlay and Form container
+    private VBox loadingOverlay;
+    private VBox formBox;
+
     public DashboardView() {
         // Initialize dummy student data
         initializeDummyData();
@@ -139,22 +143,7 @@ public class DashboardView extends BorderPane {
     }
 
     private void initializeDummyData() {
-        // Insert ST0001
-        studentsList.add(new Student(
-                "ST0001",
-                "Rahul Kumar",
-                "Ramesh Kumar",
-                "Suman Devi",
-                "9876543210",
-                "8765432109",
-                "rahul.kumar@gmail.com",
-                "Sector 62, Noida, UP",
-                "DM",
-                "A (10AM-1PM)",
-                "01-Jun-2026",
-                "01-Sep-2026",
-                "Active"));
-        presentStudentIds.add("ST0001"); // Initially present
+        // Empty to prevent generating dummy data as requested
     }
 
     // --- SIDEBAR BUILDER ---
@@ -219,6 +208,7 @@ public class DashboardView extends BorderPane {
                         break;
                     case "Students":
                         showPanel(studentsPanel);
+                        fetchStudentsFromGoogleSheets();
                         break;
                     case "Attendance":
                         // Refresh attendance lists when opening
@@ -699,9 +689,24 @@ public class DashboardView extends BorderPane {
         Label lblTableTitle = new Label("Student Enrollments");
         lblTableTitle.getStyleClass().add("card-title");
 
+        StackPane tableContainer = new StackPane();
+        VBox.setVgrow(tableContainer, Priority.ALWAYS);
+
         studentTable = new TableView<>();
         studentTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-        VBox.setVgrow(studentTable, Priority.ALWAYS);
+        
+        // Progress Overlay
+        loadingOverlay = new VBox(15);
+        loadingOverlay.setAlignment(Pos.CENTER);
+        loadingOverlay.setStyle("-fx-background-color: rgba(15, 23, 42, 0.75); -fx-background-radius: 12;");
+        ProgressIndicator progressIndicator = new ProgressIndicator();
+        progressIndicator.setStyle("-fx-progress-color: -primary-color;");
+        Label lblLoading = new Label("Loading students from Google Sheets...");
+        lblLoading.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;");
+        loadingOverlay.getChildren().addAll(progressIndicator, lblLoading);
+        loadingOverlay.setVisible(false);
+
+        tableContainer.getChildren().addAll(studentTable, loadingOverlay);
 
         // Table Columns
         TableColumn<Student, String> colId = new TableColumn<>("ID");
@@ -772,10 +777,10 @@ public class DashboardView extends BorderPane {
         studentTable.getColumns().addAll(colId, colName, colCourse, colBatch, colAdm, colCmp, colStatus);
         studentTable.setItems(filteredStudents);
 
-        tableBox.getChildren().addAll(lblTableTitle, studentTable);
+        tableBox.getChildren().addAll(lblTableTitle, tableContainer);
 
         // Right Form Box (35%)
-        VBox formBox = new VBox(15);
+        formBox = new VBox(15);
         formBox.getStyleClass().add("content-card");
         formBox.setPrefWidth(480);
         formBox.setMaxWidth(500);
@@ -1469,207 +1474,59 @@ public class DashboardView extends BorderPane {
         alert.showAndWait();
     }
 
-    // --- STUDENT DATA MODEL ---
-    public static class Student {
-        private final SimpleStringProperty id;
-        private final SimpleStringProperty name;
-        private final SimpleStringProperty fatherName;
-        private final SimpleStringProperty motherName;
-        private final SimpleStringProperty mobile;
-        private final SimpleStringProperty altMobile;
-        private final SimpleStringProperty email;
-        private final SimpleStringProperty address;
-        private final SimpleStringProperty course;
-        private final SimpleStringProperty batch;
-        private final SimpleStringProperty admissionDate;
-        private final SimpleStringProperty completionDate;
-        private final SimpleStringProperty status;
-
-        public Student(String id, String name, String fatherName, String motherName, String mobile,
-                String altMobile, String email, String address, String course, String batch,
-                String admissionDate, String completionDate, String status) {
-            this.id = new SimpleStringProperty(id);
-            this.name = new SimpleStringProperty(name);
-            this.fatherName = new SimpleStringProperty(fatherName);
-            this.motherName = new SimpleStringProperty(motherName);
-            this.mobile = new SimpleStringProperty(mobile);
-            this.altMobile = new SimpleStringProperty(altMobile);
-            this.email = new SimpleStringProperty(email);
-            this.address = new SimpleStringProperty(address);
-            this.course = new SimpleStringProperty(course);
-            this.batch = new SimpleStringProperty(batch);
-            this.admissionDate = new SimpleStringProperty(admissionDate);
-            this.completionDate = new SimpleStringProperty(completionDate);
-            this.status = new SimpleStringProperty(status);
+    private void fetchStudentsFromGoogleSheets() {
+        if (loadingOverlay.isVisible()) {
+            return;
         }
+        loadingOverlay.setVisible(true);
+        formBox.setDisable(true);
 
-        // ID Property
-        public String getId() {
-            return id.get();
-        }
+        javafx.concurrent.Task<List<Student>> loadTask = new javafx.concurrent.Task<>() {
+            @Override
+            protected List<Student> call() throws Exception {
+                GoogleSheetsService service = new GoogleSheetsService();
+                return service.readStudents();
+            }
+        };
 
-        public void setId(String value) {
-            id.set(value);
-        }
+        loadTask.setOnSucceeded(e -> {
+            List<Student> loaded = loadTask.getValue();
+            studentsList.clear();
+            studentsList.addAll(loaded);
 
-        public SimpleStringProperty idProperty() {
-            return id;
-        }
+            presentStudentIds.clear();
+            for (Student s : loaded) {
+                if ("Active".equalsIgnoreCase(s.getStatus())) {
+                    presentStudentIds.add(s.getId());
+                }
+            }
 
-        // Name Property
-        public String getName() {
-            return name.get();
-        }
+            loadingOverlay.setVisible(false);
+            formBox.setDisable(false);
+            updateDashboardMetrics();
+            addActivity("🔄", "Fetched " + loaded.size() + " student profiles from Google Sheets");
+        });
 
-        public void setName(String value) {
-            name.set(value);
-        }
+        loadTask.setOnFailed(e -> {
+            Throwable ex = loadTask.getException();
+            ex.printStackTrace();
 
-        public SimpleStringProperty nameProperty() {
-            return name;
-        }
+            loadingOverlay.setVisible(false);
+            formBox.setDisable(false);
 
-        // Father's Name Property
-        public String getFatherName() {
-            return fatherName.get();
-        }
+            java.io.StringWriter sw = new java.io.StringWriter();
+            java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+            ex.printStackTrace(pw);
+            String stackTrace = sw.toString();
+            if (stackTrace.length() > 800) {
+                stackTrace = stackTrace.substring(0, 800) + "\n...";
+            }
 
-        public void setFatherName(String value) {
-            fatherName.set(value);
-        }
+            showErrorAlert("Data Load Error",
+                "Failed to connect to Google Sheets",
+                "Error details:\n" + ex.toString() + "\n\nStack Trace:\n" + stackTrace + "\n\nPlease check your network connection and credentials.");
+        });
 
-        public SimpleStringProperty fatherNameProperty() {
-            return fatherName;
-        }
-
-        // Mother's Name Property
-        public String getMotherName() {
-            return motherName.get();
-        }
-
-        public void setMotherName(String value) {
-            motherName.set(value);
-        }
-
-        public SimpleStringProperty motherNameProperty() {
-            return motherName;
-        }
-
-        // Mobile Property
-        public String getMobile() {
-            return mobile.get();
-        }
-
-        public void setMobile(String value) {
-            mobile.set(value);
-        }
-
-        public SimpleStringProperty mobileProperty() {
-            return mobile;
-        }
-
-        // Alt Mobile Property
-        public String getAltMobile() {
-            return altMobile.get();
-        }
-
-        public void setAltMobile(String value) {
-            altMobile.set(value);
-        }
-
-        public SimpleStringProperty altMobileProperty() {
-            return altMobile;
-        }
-
-        // Email Property
-        public String getEmail() {
-            return email.get();
-        }
-
-        public void setEmail(String value) {
-            email.set(value);
-        }
-
-        public SimpleStringProperty emailProperty() {
-            return email;
-        }
-
-        // Address Property
-        public String getAddress() {
-            return address.get();
-        }
-
-        public void setAddress(String value) {
-            address.set(value);
-        }
-
-        public SimpleStringProperty addressProperty() {
-            return address;
-        }
-
-        // Course Property
-        public String getCourse() {
-            return course.get();
-        }
-
-        public void setCourse(String value) {
-            course.set(value);
-        }
-
-        public SimpleStringProperty courseProperty() {
-            return course;
-        }
-
-        // Batch Property
-        public String getBatch() {
-            return batch.get();
-        }
-
-        public void setBatch(String value) {
-            batch.set(value);
-        }
-
-        public SimpleStringProperty batchProperty() {
-            return batch;
-        }
-
-        // Admission Date Property
-        public String getAdmissionDate() {
-            return admissionDate.get();
-        }
-
-        public void setAdmissionDate(String value) {
-            admissionDate.set(value);
-        }
-
-        public SimpleStringProperty admissionDateProperty() {
-            return admissionDate;
-        }
-
-        // Completion Date Property
-        public String getCompletionDate() {
-            return completionDate.get();
-        }
-
-        public void setCompletionDate(String value) {
-            completionDate.set(value);
-        }
-
-        public SimpleStringProperty completionDateProperty() {
-            return completionDate;
-        }
-
-        // Status Property
-        public String getStatus() {
-            return status.get();
-        }
-
-        public void setStatus(String value) {
-            status.set(value);
-        }
-
-        public SimpleStringProperty statusProperty() {
-            return status;
-        }
+        new Thread(loadTask).start();
     }
 }

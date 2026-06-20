@@ -185,7 +185,7 @@ public class UpdateDialog extends JDialog {
 
                 // Extract files in a background thread to keep UI smooth
                 new Thread(() -> {
-                    boolean success = AutoUpdater.extractUpdateZip();
+                    boolean success = AutoUpdater.extractUpdateZip(latestVersion);
                     
                     SwingUtilities.invokeLater(() -> {
                         if (success) {

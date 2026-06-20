@@ -21,8 +21,8 @@ public class AutoUpdater {
             InputStream inputStream = null;
             FileOutputStream outputStream = null;
             try {
-                // Try downloading from the standard GitHub Release source tag
-                String urlString = "https://github.com/" + Constants.GITHUB_OWNER + "/" + Constants.GITHUB_REPO + "/archive/refs/tags/v" + version + ".zip";
+                // Try downloading the pre-compiled release ZIP from GitHub Release assets
+                String urlString = "https://github.com/" + Constants.GITHUB_OWNER + "/" + Constants.GITHUB_REPO + "/releases/download/v" + version + "/YouvakendraSM.zip";
                 URL url = new URL(urlString);
                 
                 System.out.println("[Updater] Connecting to: " + urlString);
@@ -30,10 +30,10 @@ public class AutoUpdater {
 
                 int responseCode = connection.getResponseCode();
                 
-                // If tag with 'v' prefix returns 404, try without 'v'
+                // If release with 'v' prefix returns 404, try without 'v' prefix
                 if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
-                    System.out.println("[Updater] Tag with 'v' returned 404, trying without 'v' prefix...");
-                    urlString = "https://github.com/" + Constants.GITHUB_OWNER + "/" + Constants.GITHUB_REPO + "/archive/refs/tags/" + version + ".zip";
+                    System.out.println("[Updater] Release with 'v' returned 404, trying without 'v' prefix...");
+                    urlString = "https://github.com/" + Constants.GITHUB_OWNER + "/" + Constants.GITHUB_REPO + "/releases/download/" + version + "/YouvakendraSM.zip";
                     url = new URL(urlString);
                     connection = openConnectionWithRedirects(url);
                     responseCode = connection.getResponseCode();
@@ -120,9 +120,9 @@ public class AutoUpdater {
     }
 
     /**
-     * Extracts the downloaded update ZIP file, stripping the top-level directory wrapper.
+     * Extracts the downloaded update ZIP file, stripping the top-level directory wrapper if present.
      */
-    public static boolean extractUpdateZip() {
+    public static boolean extractUpdateZip(String latestVersion) {
         File zipFile = new File(Constants.UPDATE_ZIP_FILE);
         File destDir = new File("update_temp");
         
@@ -136,9 +136,9 @@ public class AutoUpdater {
             ZipEntry entry;
             String commonPrefix = null;
 
-            // First pass or inspect first entry to identify the root folder prefix
-            // GitHub ZIPs wrap everything in a folder like "YouvakendraSM-1.0.1/"
-            // We need to strip this prefix so files go to the root of update_temp.
+            // GitHub source ZIPs wrap everything in a folder like "YouvakendraSM-new-1.0.1/".
+            // We check the first entry. If it is a folder containing a hyphen/version pattern, 
+            // we strip it. Otherwise, we do not strip anything (e.g. for release ZIPs).
             byte[] buffer = new byte[8192];
             
             while ((entry = zipIn.getNextEntry()) != null) {
@@ -148,7 +148,15 @@ public class AutoUpdater {
                 if (commonPrefix == null) {
                     int firstSlashIndex = entryName.indexOf('/');
                     if (firstSlashIndex != -1) {
-                        commonPrefix = entryName.substring(0, firstSlashIndex + 1);
+                        String firstDir = entryName.substring(0, firstSlashIndex);
+                        // Strip prefix only if it matches standard GitHub source zip wrapper structure
+                        if (firstDir.equalsIgnoreCase(Constants.GITHUB_REPO + "-" + latestVersion) || 
+                            firstDir.equalsIgnoreCase(Constants.GITHUB_REPO + "-v" + latestVersion) || 
+                            firstDir.contains("-")) {
+                            commonPrefix = firstDir + "/";
+                        } else {
+                            commonPrefix = "";
+                        }
                     } else {
                         commonPrefix = ""; // No prefix
                     }
@@ -221,8 +229,12 @@ public class AutoUpdater {
             writer.println("if exist \"" + Constants.UPDATE_ZIP_FILE + "\" del /f /q \"" + Constants.UPDATE_ZIP_FILE + "\" > nul");
             
             writer.println("echo Restarting the application...");
-            // Start the application back up using run.bat
-            writer.println("start \"\" \"" + Constants.RUN_BAT + "\"");
+            // Restart using the native executable if it exists, otherwise fall back to batch file (dev)
+            writer.println("if exist \"YouvakendraSM.exe\" (");
+            writer.println("    start \"\" \"YouvakendraSM.exe\"");
+            writer.println(") else (");
+            writer.println("    start \"\" \"" + Constants.RUN_BAT + "\"");
+            writer.println(")");
             
             writer.println("echo Update complete!");
             // Batch file deletes itself
