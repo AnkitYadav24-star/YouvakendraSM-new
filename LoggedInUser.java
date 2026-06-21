@@ -4,7 +4,7 @@ public class LoggedInUser {
     private final Role role;
     private final String id;
     private final String name;
-    private final String pictureUrl;
+    private String pictureUrl;
     private final String center;
     private final String designation;
     private final String erpNo; // Student specific
@@ -29,6 +29,7 @@ public class LoggedInUser {
     public String getId() { return id; }
     public String getName() { return name; }
     public String getPictureUrl() { return pictureUrl; }
+    public void setPictureUrl(String value) { this.pictureUrl = value; }
     public String getCenter() { return center; }
     public String getDesignation() { return designation; }
     public String getErpNo() { return erpNo; }

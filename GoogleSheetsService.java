@@ -765,4 +765,171 @@ public class GoogleSheetsService {
         }
         deleteRowFromSheet(Config.PLACEMENTS_SHEET_NAME, rowIndex);
     }
+
+    public void addAttendance(Attendance a) throws IOException, GeneralSecurityException {
+        Sheets service = getSheetsService();
+        String range = Config.ATTENDANCE_SHEET_NAME + "!A:H";
+        List<Object> row = List.of(
+            a.getAttendanceId(),
+            a.getDate(),
+            a.getStudentId(),
+            a.getBatchId(),
+            a.getStatus(),
+            a.getMarkedBy(),
+            a.getMarkedTime(),
+            a.getCourseId()
+        );
+        ValueRange body = new ValueRange().setValues(List.of(row));
+        service.spreadsheets().values().append(Config.SPREADSHEET_ID, range, body)
+                .setValueInputOption("RAW")
+                .execute();
+    }
+
+    public void updateAttendance(Attendance a) throws IOException, GeneralSecurityException {
+        Sheets service = getSheetsService();
+        String range = Config.ATTENDANCE_SHEET_NAME + "!A:H";
+        ValueRange response = service.spreadsheets().values()
+                .get(Config.SPREADSHEET_ID, range)
+                .execute();
+        List<List<Object>> values = response.getValues();
+        if (values == null || values.isEmpty()) {
+            throw new IOException("No attendance records found in sheet");
+        }
+        int rowIndex = -1;
+        for (int i = 1; i < values.size(); i++) {
+            List<Object> row = values.get(i);
+            if (row.size() > 0 && a.getAttendanceId().equalsIgnoreCase(row.get(0).toString().trim())) {
+                rowIndex = i + 1;
+                break;
+            }
+        }
+        if (rowIndex == -1) {
+            throw new IOException("Attendance record not found in sheet: " + a.getAttendanceId());
+        }
+
+        String updateRange = Config.ATTENDANCE_SHEET_NAME + "!A" + rowIndex + ":H" + rowIndex;
+        List<Object> rowData = List.of(
+            a.getAttendanceId(),
+            a.getDate(),
+            a.getStudentId(),
+            a.getBatchId(),
+            a.getStatus(),
+            a.getMarkedBy(),
+            a.getMarkedTime(),
+            a.getCourseId()
+        );
+        ValueRange body = new ValueRange().setValues(List.of(rowData));
+        service.spreadsheets().values().update(Config.SPREADSHEET_ID, updateRange, body)
+                .setValueInputOption("RAW")
+                .execute();
+    }
+
+    public void deleteAttendance(String attendanceId) throws IOException, GeneralSecurityException {
+        Sheets service = getSheetsService();
+        String range = Config.ATTENDANCE_SHEET_NAME + "!A:H";
+        ValueRange response = service.spreadsheets().values()
+                .get(Config.SPREADSHEET_ID, range)
+                .execute();
+        List<List<Object>> values = response.getValues();
+        if (values == null || values.isEmpty()) {
+            throw new IOException("No attendance records found in sheet");
+        }
+        int rowIndex = -1;
+        for (int i = 1; i < values.size(); i++) {
+            List<Object> row = values.get(i);
+            if (row.size() > 0 && attendanceId.equalsIgnoreCase(row.get(0).toString().trim())) {
+                rowIndex = i + 1;
+                break;
+            }
+        }
+        if (rowIndex == -1) {
+            throw new IOException("Attendance record not found in sheet: " + attendanceId);
+        }
+        deleteRowFromSheet(Config.ATTENDANCE_SHEET_NAME, rowIndex);
+    }
+
+    public void updateAdminPictureUrl(String adminId, String newUrl) throws IOException, GeneralSecurityException {
+        Sheets service = getSheetsService();
+        String range = Config.ADMINS_SHEET_NAME + "!A:F";
+        ValueRange response = service.spreadsheets().values()
+                .get(Config.SPREADSHEET_ID, range)
+                .execute();
+        List<List<Object>> values = response.getValues();
+        if (values == null || values.isEmpty()) {
+            throw new IOException("No admins found in sheet");
+        }
+        int rowIndex = -1;
+        for (int i = 1; i < values.size(); i++) {
+            List<Object> row = values.get(i);
+            if (row.size() > 0 && adminId.equalsIgnoreCase(row.get(0).toString().trim())) {
+                rowIndex = i + 1;
+                break;
+            }
+        }
+        if (rowIndex == -1) {
+            throw new IOException("Admin not found in sheet: " + adminId);
+        }
+        String updateRange = Config.ADMINS_SHEET_NAME + "!C" + rowIndex;
+        ValueRange body = new ValueRange().setValues(List.of(List.of(newUrl)));
+        service.spreadsheets().values().update(Config.SPREADSHEET_ID, updateRange, body)
+                .setValueInputOption("RAW")
+                .execute();
+    }
+
+    public void updateTrainerPictureUrl(String trainerId, String newUrl) throws IOException, GeneralSecurityException {
+        Sheets service = getSheetsService();
+        String range = Config.TRAINERS_SHEET_NAME + "!A:G";
+        ValueRange response = service.spreadsheets().values()
+                .get(Config.SPREADSHEET_ID, range)
+                .execute();
+        List<List<Object>> values = response.getValues();
+        if (values == null || values.isEmpty()) {
+            throw new IOException("No trainers found in sheet");
+        }
+        int rowIndex = -1;
+        for (int i = 1; i < values.size(); i++) {
+            List<Object> row = values.get(i);
+            if (row.size() > 0 && trainerId.equalsIgnoreCase(row.get(0).toString().trim())) {
+                rowIndex = i + 1;
+                break;
+            }
+        }
+        if (rowIndex == -1) {
+            throw new IOException("Trainer not found in sheet: " + trainerId);
+        }
+        String updateRange = Config.TRAINERS_SHEET_NAME + "!C" + rowIndex;
+        ValueRange body = new ValueRange().setValues(List.of(List.of(newUrl)));
+        service.spreadsheets().values().update(Config.SPREADSHEET_ID, updateRange, body)
+                .setValueInputOption("RAW")
+                .execute();
+    }
+
+    public void updateStudentPictureUrl(String studentId, String newUrl) throws IOException, GeneralSecurityException {
+        Sheets service = getSheetsService();
+        String range = Config.STUDENT_LOGIN_SHEET_NAME + "!A:D";
+        ValueRange response = service.spreadsheets().values()
+                .get(Config.SPREADSHEET_ID, range)
+                .execute();
+        List<List<Object>> values = response.getValues();
+        if (values == null || values.isEmpty()) {
+            throw new IOException("No students found in sheet");
+        }
+        int rowIndex = -1;
+        for (int i = 1; i < values.size(); i++) {
+            List<Object> row = values.get(i);
+            if (row.size() > 0 && studentId.equalsIgnoreCase(row.get(0).toString().trim())) {
+                rowIndex = i + 1;
+                break;
+            }
+        }
+        if (rowIndex == -1) {
+            throw new IOException("Student not found in sheet: " + studentId);
+        }
+        String updateRange = Config.STUDENT_LOGIN_SHEET_NAME + "!D" + rowIndex;
+        ValueRange body = new ValueRange().setValues(List.of(List.of(newUrl)));
+        service.spreadsheets().values().update(Config.SPREADSHEET_ID, updateRange, body)
+                .setValueInputOption("RAW")
+                .execute();
+    }
 }
+

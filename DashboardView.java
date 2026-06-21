@@ -71,6 +71,11 @@ public class DashboardView extends BorderPane {
     private ScrollPane usersPanel;
     private ScrollPane settingsPanel;
 
+    // Custom added fields
+    private VBox usersListContainer;
+    private VBox sidebarFooter;
+    private StackPane headerAvatarPane;
+
     // Courses dynamic table data
     private TableView<Course> coursesTable;
     private final ObservableList<Course> coursesList = FXCollections.observableArrayList();
@@ -195,6 +200,7 @@ public class DashboardView extends BorderPane {
 
         // Fetch data on startup to populate dashboard metrics
         fetchDataForDashboard();
+        refreshUsersData();
 
         // Apply role permissions initially
         switchUserRole(currentRole);
@@ -228,6 +234,10 @@ public class DashboardView extends BorderPane {
 
         logoBox.getChildren().addAll(lblLogo, btnToggleSidebar);
         sidebar.getChildren().add(logoBox);
+
+        // VBox to contain the buttons
+        VBox buttonContainer = new VBox(5);
+        buttonContainer.setStyle("-fx-background-color: transparent;");
 
         // Navigation menu buttons
         String[][] menuItems = {
@@ -299,6 +309,7 @@ public class DashboardView extends BorderPane {
                         break;
                     case "Users":
                         showPanel(usersPanel);
+                        refreshUsersData();
                         break;
                     case "Settings":
                         showPanel(settingsPanel);
@@ -306,8 +317,36 @@ public class DashboardView extends BorderPane {
                 }
             });
             menuButtons.add(btn);
-            sidebar.getChildren().add(btn);
+            buttonContainer.getChildren().add(btn);
         }
+
+        // ScrollPane wrapping buttons
+        ScrollPane sidebarScrollPane = new ScrollPane(buttonContainer);
+        sidebarScrollPane.setFitToWidth(true);
+        sidebarScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        sidebarScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        sidebarScrollPane.setStyle(
+                "-fx-background-color: transparent; -fx-background: transparent; -fx-border-color: transparent; -fx-padding: 0;");
+        VBox.setVgrow(sidebarScrollPane, Priority.ALWAYS);
+        sidebar.getChildren().add(sidebarScrollPane);
+
+        // Developer Credits Footer
+        sidebarFooter = new VBox(4);
+        sidebarFooter.setPadding(new Insets(10, 15, 10, 15));
+        sidebarFooter.setStyle(
+                "-fx-border-color: -border-color transparent transparent transparent; -fx-border-width: 1 0 0 0; -fx-background-color: transparent;");
+
+        Label lblDevName = new Label("Developer :- Ankit Yadav");
+        lblDevName.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: -text-main;");
+        Label lblDevTitle = new Label("IT Trainer at Youvakendra\nSector 80 Noida");
+        lblDevTitle.setStyle("-fx-font-size: 10px; -fx-text-fill: -text-muted;");
+        Label lblVer = new Label("Version: 1.1.1");
+        lblVer.setStyle("-fx-font-size: 10px; -fx-text-fill: -text-muted;");
+        Label lblDate = new Label("Released: 2026-06-21");
+        lblDate.setStyle("-fx-font-size: 10px; -fx-text-fill: -text-muted;");
+
+        sidebarFooter.getChildren().addAll(lblDevName, lblDevTitle, lblVer, lblDate);
+        sidebar.getChildren().add(sidebarFooter);
 
         return sidebar;
     }
@@ -322,6 +361,10 @@ public class DashboardView extends BorderPane {
             for (Button btn : menuButtons) {
                 btn.setContentDisplay(ContentDisplay.LEFT);
             }
+            if (sidebarFooter != null) {
+                sidebarFooter.setVisible(true);
+                sidebarFooter.setManaged(true);
+            }
         } else {
             sidebar.setPrefWidth(70);
             sidebar.setMinWidth(70);
@@ -329,6 +372,10 @@ public class DashboardView extends BorderPane {
             btnToggleSidebar.setText("▶");
             for (Button btn : menuButtons) {
                 btn.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+            }
+            if (sidebarFooter != null) {
+                sidebarFooter.setVisible(false);
+                sidebarFooter.setManaged(false);
             }
         }
     }
@@ -415,7 +462,7 @@ public class DashboardView extends BorderPane {
         cbRoleSelector.setOnAction(e -> switchUserRole(cbRoleSelector.getValue()));
 
         // User Avatar Circle
-        StackPane avatarPane = new StackPane();
+        headerAvatarPane = new StackPane();
         Circle avatarBg = new Circle(18);
         avatarBg.getStyleClass().add("avatar-circle");
 
@@ -425,7 +472,7 @@ public class DashboardView extends BorderPane {
         }
         txtAvatarChar = new Text(initialChar);
         txtAvatarChar.getStyleClass().add("avatar-text");
-        avatarPane.getChildren().addAll(avatarBg, txtAvatarChar);
+        headerAvatarPane.getChildren().addAll(avatarBg, txtAvatarChar);
 
         if (loggedInUser != null && loggedInUser.getPictureUrl() != null && !loggedInUser.getPictureUrl().isEmpty()) {
             try {
@@ -443,7 +490,7 @@ public class DashboardView extends BorderPane {
                         txtAvatarChar.setVisible(false);
                     }
                 });
-                avatarPane.getChildren().add(imgView);
+                headerAvatarPane.getChildren().add(imgView);
             } catch (Exception e) {
                 System.out.println("Could not load header avatar: " + e.getMessage());
             }
@@ -460,7 +507,7 @@ public class DashboardView extends BorderPane {
         profileTxtBox.getChildren().addAll(lblHeaderUserName, lblHeaderRoleBadge);
 
         // Clickable profile section
-        HBox profileBox = new HBox(10, avatarPane, profileTxtBox);
+        HBox profileBox = new HBox(10, headerAvatarPane, profileTxtBox);
         profileBox.setAlignment(Pos.CENTER_LEFT);
         profileBox.setCursor(javafx.scene.Cursor.HAND);
         profileBox.setOnMouseClicked(e -> showUserProfilePopup());
@@ -469,6 +516,45 @@ public class DashboardView extends BorderPane {
         boolean isAdminUser = loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.ADMIN;
         header.getChildren().addAll(txtSearch, btnHeaderRefresh, spacer, profileBox);
         return header;
+    }
+
+    private void refreshHeaderAvatar() {
+        if (headerAvatarPane == null)
+            return;
+        headerAvatarPane.getChildren().clear();
+
+        Circle avatarBg = new Circle(18);
+        avatarBg.getStyleClass().add("avatar-circle");
+
+        String initialChar = "A";
+        if (loggedInUser != null && loggedInUser.getName() != null && !loggedInUser.getName().isEmpty()) {
+            initialChar = loggedInUser.getName().substring(0, 1).toUpperCase();
+        }
+        txtAvatarChar = new Text(initialChar);
+        txtAvatarChar.getStyleClass().add("avatar-text");
+        headerAvatarPane.getChildren().addAll(avatarBg, txtAvatarChar);
+
+        if (loggedInUser != null && loggedInUser.getPictureUrl() != null && !loggedInUser.getPictureUrl().isEmpty()) {
+            try {
+                javafx.scene.image.ImageView imgView = new javafx.scene.image.ImageView();
+                javafx.scene.image.Image img = new javafx.scene.image.Image(loggedInUser.getPictureUrl(), true);
+                imgView.setImage(img);
+                imgView.setFitWidth(36);
+                imgView.setFitHeight(36);
+                imgView.setPreserveRatio(true);
+                Circle clip = new Circle(18, 18, 18);
+                imgView.setClip(clip);
+
+                img.progressProperty().addListener((obs, oldVal, newVal) -> {
+                    if (newVal.doubleValue() == 1.0 && !img.isError()) {
+                        txtAvatarChar.setVisible(false);
+                    }
+                });
+                headerAvatarPane.getChildren().add(imgView);
+            } catch (Exception e) {
+                System.out.println("Could not load header avatar: " + e.getMessage());
+            }
+        }
     }
 
     private void switchUserRole(String role) {
@@ -480,8 +566,8 @@ public class DashboardView extends BorderPane {
         String displayName = "Viewer Account";
         if (loggedInUser != null) {
             String loggedInRoleStr = loggedInUser.getRole() == LoggedInUser.Role.ADMIN ? "Admin"
-                    : (loggedInUser.getRole() == LoggedInUser.Role.TRAINER ? "Trainer" 
-                    : (loggedInUser.getRole() == LoggedInUser.Role.STUDENT ? "Student" : "Viewer"));
+                    : (loggedInUser.getRole() == LoggedInUser.Role.TRAINER ? "Trainer"
+                            : (loggedInUser.getRole() == LoggedInUser.Role.STUDENT ? "Student" : "Viewer"));
             if (loggedInRoleStr.equals(role)) {
                 displayName = loggedInUser.getName();
             } else {
@@ -836,7 +922,7 @@ public class DashboardView extends BorderPane {
                     String trainerCourse = getTrainerCourseId();
                     if (loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.STUDENT) {
                         loadedStudents.removeIf(s -> !loggedInUser.getId().equalsIgnoreCase(s.getId()));
-                        
+
                         // Filter courses list so student only sees their own course
                         coursesList.removeIf(c -> {
                             String scId = loggedInUser.getCourseId();
@@ -947,8 +1033,10 @@ public class DashboardView extends BorderPane {
 
         Button btnManageStudents = new Button("Manage Students ⚙️");
         btnManageStudents.getStyleClass().addAll("btn", "btn-primary");
-        btnManageStudents.setVisible(loggedInUser != null && (loggedInUser.getRole() == LoggedInUser.Role.ADMIN || loggedInUser.getRole() == LoggedInUser.Role.TRAINER));
-        btnManageStudents.setManaged(loggedInUser != null && (loggedInUser.getRole() == LoggedInUser.Role.ADMIN || loggedInUser.getRole() == LoggedInUser.Role.TRAINER));
+        btnManageStudents.setVisible(loggedInUser != null && (loggedInUser.getRole() == LoggedInUser.Role.ADMIN
+                || loggedInUser.getRole() == LoggedInUser.Role.TRAINER));
+        btnManageStudents.setManaged(loggedInUser != null && (loggedInUser.getRole() == LoggedInUser.Role.ADMIN
+                || loggedInUser.getRole() == LoggedInUser.Role.TRAINER));
         btnManageStudents.setOnAction(e -> openStudentEditorModal());
 
         tableHeaderBar.getChildren().addAll(lblTableTitle, toolbarSpacer, btnManageStudents);
@@ -1640,11 +1728,17 @@ public class DashboardView extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
+        Button btnManageAttendance = new Button("Manage Attendance ⚙️");
+        btnManageAttendance.getStyleClass().addAll("btn", "btn-secondary");
+        btnManageAttendance.setVisible(loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.ADMIN);
+        btnManageAttendance.setManaged(loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.ADMIN);
+        btnManageAttendance.setOnAction(e -> openAttendanceEditorModal());
+
         Button btnRefresh = new Button("Refresh Data 🔄");
         btnRefresh.getStyleClass().addAll("btn", "btn-primary");
         btnRefresh.setOnAction(e -> refreshAttendanceData());
 
-        bar.getChildren().addAll(lblSubtitle, spacer, btnRefresh);
+        bar.getChildren().addAll(lblSubtitle, spacer, btnManageAttendance, btnRefresh);
 
         StackPane tableContainer = new StackPane();
         VBox.setVgrow(tableContainer, Priority.ALWAYS);
@@ -2164,23 +2258,101 @@ public class DashboardView extends BorderPane {
 
         VBox contentBox = new VBox(15);
         contentBox.getStyleClass().add("content-card");
-        contentBox.setPrefHeight(400);
+        VBox.setVgrow(contentBox, Priority.ALWAYS);
 
         Label cardTitle = new Label("Registered System Profiles");
         cardTitle.getStyleClass().add("card-title");
 
-        VBox list = new VBox(10);
-        list.getChildren().addAll(
-                createUserProfileRow("Admin User (You)", "Admin", "Full administrator operations."),
-                createUserProfileRow("Trainer Staff", "Trainer", "Attendance entries and status updates."),
-                createUserProfileRow("Viewer Account", "Viewer", "Guest view-only accesses."));
+        usersListContainer = new VBox(10);
 
-        contentBox.getChildren().addAll(cardTitle, list);
+        Label lblLoading = new Label("Loading users from Google Sheets...");
+        lblLoading.setStyle("-fx-text-fill: -text-muted; -fx-font-style: italic;");
+        usersListContainer.getChildren().add(lblLoading);
+
+        contentBox.getChildren().addAll(cardTitle, usersListContainer);
         container.getChildren().addAll(lblTitle, contentBox);
 
         usersPanel = new ScrollPane(container);
         usersPanel.setFitToWidth(true);
+        usersPanel.setFitToHeight(true);
         usersPanel.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+    }
+
+    public void refreshUsersData() {
+        if (usersListContainer == null)
+            return;
+
+        javafx.concurrent.Task<Void> loadTask = new javafx.concurrent.Task<>() {
+            private List<AdminProfile> admins;
+            private List<TrainerProfile> trainers;
+
+            @Override
+            protected Void call() throws Exception {
+                GoogleSheetsService service = new GoogleSheetsService();
+                admins = service.readAdminProfiles();
+                trainers = service.readTrainerProfiles();
+                return null;
+            }
+
+            @Override
+            protected void succeeded() {
+                usersListContainer.getChildren().clear();
+
+                boolean isTrainerLoggedIn = loggedInUser != null && loggedInUser.getRole() == LoggedInUser.Role.TRAINER;
+
+                // Admins
+                if (admins != null) {
+                    for (AdminProfile admin : admins) {
+                        usersListContainer.getChildren().add(
+                                createUserProfileRow(admin.getAdminName(), "Admin",
+                                        admin.getDesignation() != null && !admin.getDesignation().isEmpty()
+                                                ? admin.getDesignation()
+                                                : "System Administrator"));
+                    }
+                }
+
+                // Trainers
+                if (trainers != null) {
+                    for (TrainerProfile trainer : trainers) {
+                        if (isTrainerLoggedIn) {
+                            if (loggedInUser.getId() != null
+                                    && loggedInUser.getId().equalsIgnoreCase(trainer.getTrainerId())) {
+                                continue;
+                            }
+                            usersListContainer.getChildren().add(
+                                    createUserProfileRow(trainer.getTrainerName(), "Trainer",
+                                            trainer.getDesignation() != null && !trainer.getDesignation().isEmpty()
+                                                    ? trainer.getDesignation()
+                                                    : "Instructor"));
+                        } else {
+                            usersListContainer.getChildren().add(
+                                    createUserProfileRow(trainer.getTrainerName(), "Trainer",
+                                            trainer.getDesignation() != null && !trainer.getDesignation().isEmpty()
+                                                    ? trainer.getDesignation()
+                                                    : "Instructor"));
+                        }
+                    }
+                }
+
+                if (usersListContainer.getChildren().isEmpty()) {
+                    Label lblEmpty = new Label("No profiles to display.");
+                    lblEmpty.setStyle("-fx-text-fill: -text-muted; -fx-font-style: italic;");
+                    usersListContainer.getChildren().add(lblEmpty);
+                }
+            }
+
+            @Override
+            protected void failed() {
+                usersListContainer.getChildren().clear();
+                Label lblErr = new Label("Failed to load user profiles.");
+                lblErr.setStyle("-fx-text-fill: -danger-color;");
+                usersListContainer.getChildren().add(lblErr);
+                Throwable ex = getException();
+                if (ex != null)
+                    ex.printStackTrace();
+            }
+        };
+        new Thread(loadTask).start();
     }
 
     private HBox createUserProfileRow(String name, String role, String desc) {
@@ -2864,8 +3036,66 @@ public class DashboardView extends BorderPane {
             }
         });
 
-        HBox actionBox = new HBox(15);
+        HBox actionBox = new HBox(10);
         actionBox.setAlignment(Pos.CENTER);
+
+        Button btnChangePic = new Button("✏️ Change Picture");
+        btnChangePic.getStyleClass().addAll("btn", "btn-primary");
+        btnChangePic.setOnAction(e -> {
+            TextInputDialog dialog = new TextInputDialog(loggedInUser != null ? loggedInUser.getPictureUrl() : "");
+            dialog.setTitle("Change Profile Picture");
+            dialog.setHeaderText("Update Profile Picture URL");
+            dialog.setContentText("Please enter the new image URL:");
+
+            java.io.File cssFile = new java.io.File("styles.css");
+            if (cssFile.exists()) {
+                try {
+                    dialog.getDialogPane().getStylesheets().add(cssFile.toURI().toURL().toExternalForm());
+                } catch (Exception ignored) {
+                }
+            }
+            dialog.getDialogPane().getStyleClass().add("content-card");
+
+            java.util.Optional<String> result = dialog.showAndWait();
+            if (result.isPresent()) {
+                String newUrl = result.get().trim();
+                if (!newUrl.isEmpty()) {
+                    Task<Void> updateTask = new Task<>() {
+                        @Override
+                        protected Void call() throws Exception {
+                            GoogleSheetsService service = new GoogleSheetsService();
+                            if (loggedInUser.getRole() == LoggedInUser.Role.ADMIN) {
+                                service.updateAdminPictureUrl(loggedInUser.getId(), newUrl);
+                            } else if (loggedInUser.getRole() == LoggedInUser.Role.TRAINER) {
+                                service.updateTrainerPictureUrl(loggedInUser.getId(), newUrl);
+                            } else if (loggedInUser.getRole() == LoggedInUser.Role.STUDENT) {
+                                service.updateStudentPictureUrl(loggedInUser.getId(), newUrl);
+                            }
+                            return null;
+                        }
+                    };
+                    updateTask.setOnSucceeded(evt -> {
+                        loggedInUser.setPictureUrl(newUrl);
+                        popup.close();
+                        refreshHeaderAvatar();
+                        Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+                        successAlert.setTitle("Success");
+                        successAlert.setHeaderText(null);
+                        successAlert.setContentText("Profile picture updated successfully!");
+                        successAlert.showAndWait();
+                    });
+                    updateTask.setOnFailed(evt -> {
+                        Throwable t = updateTask.getException();
+                        Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+                        errorAlert.setTitle("Error");
+                        errorAlert.setHeaderText("Failed to update picture");
+                        errorAlert.setContentText(t.getMessage());
+                        errorAlert.showAndWait();
+                    });
+                    new Thread(updateTask).start();
+                }
+            }
+        });
 
         Button btnClose = new Button("Close Profile");
         btnClose.getStyleClass().addAll("btn", "btn-secondary");
@@ -2905,7 +3135,7 @@ public class DashboardView extends BorderPane {
             }
         });
 
-        actionBox.getChildren().addAll(btnClose, btnLogout);
+        actionBox.getChildren().addAll(btnChangePic, btnClose, btnLogout);
 
         layout.getChildren().addAll(picPane, info, actionBox);
 
@@ -2961,7 +3191,8 @@ public class DashboardView extends BorderPane {
         }
 
         // tokenization fallback, excluding common role/designation words
-        List<String> exclusions = List.of("trainer", "teacher", "instructor", "staff", "admin", "viewer", "center", "designation", "professor", "faculty", "youvakendra");
+        List<String> exclusions = List.of("trainer", "teacher", "instructor", "staff", "admin", "viewer", "center",
+                "designation", "professor", "faculty", "youvakendra");
         String[] tokens = desig.split("[\\s\\-_,:/]+");
         for (String token : tokens) {
             if (token.length() >= 2 && token.length() <= 8) {
@@ -2993,9 +3224,381 @@ public class DashboardView extends BorderPane {
         refreshBatchesData();
         refreshCompaniesData();
         refreshPlacementsData();
+        refreshUsersData();
+    }
+
+    private void openAttendanceEditorModal() {
+        Stage modalStage = new Stage();
+        modalStage.initOwner(this.getScene().getWindow());
+        modalStage.initModality(Modality.APPLICATION_MODAL);
+        modalStage.setTitle("Attendance Log Manager");
+
+        VBox layout = new VBox(15);
+        layout.setPadding(new Insets(20));
+        layout.getStyleClass().add("content-card");
+        layout.setStyle("-fx-background-color: -bg-app; -fx-pref-width: 450px;");
+
+        Label lblTitle = new Label("Attendance Details Editor");
+        lblTitle.getStyleClass().add("card-title");
+
+        HBox selectorRow = new HBox(10);
+        selectorRow.setAlignment(Pos.CENTER_LEFT);
+        Label lblSelect = new Label("Select Record:");
+        lblSelect.getStyleClass().add("form-label");
+        ComboBox<Attendance> cbSelect = new ComboBox<>();
+        cbSelect.setPromptText("Choose Record to Edit/Delete");
+        cbSelect.setItems(attendanceList);
+        cbSelect.setPrefWidth(250);
+        cbSelect.getStyleClass().add("combo-box");
+        cbSelect.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(Attendance a, boolean empty) {
+                super.updateItem(a, empty);
+                setText((empty || a == null) ? null
+                        : a.getAttendanceId() + " (" + a.getDate() + " - " + a.getStudentId() + ")");
+            }
+        });
+        cbSelect.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(Attendance a, boolean empty) {
+                super.updateItem(a, empty);
+                setText((empty || a == null) ? "Choose Record to Edit/Delete"
+                        : a.getAttendanceId() + " (" + a.getDate() + " - " + a.getStudentId() + ")");
+            }
+        });
+        selectorRow.getChildren().addAll(lblSelect, cbSelect);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(10, 0, 10, 0));
+
+        Label lblId = new Label("Attendance ID:");
+        lblId.getStyleClass().add("form-label");
+        TextField txtAttId = new TextField();
+        txtAttId.setPromptText("e.g. ATT001");
+        txtAttId.getStyleClass().add("text-input");
+        grid.add(lblId, 0, 0);
+        grid.add(txtAttId, 1, 0);
+
+        Label lblDate = new Label("Date:");
+        lblDate.getStyleClass().add("form-label");
+        DatePicker dpDate = new DatePicker(LocalDate.now());
+        dpDate.getStyleClass().add("date-picker");
+        grid.add(lblDate, 0, 1);
+        grid.add(dpDate, 1, 1);
+
+        Label lblStudent = new Label("Student:");
+        lblStudent.getStyleClass().add("form-label");
+        ComboBox<String> cbStudent = new ComboBox<>();
+        cbStudent.setPromptText("Select Student");
+        cbStudent.setPrefWidth(220);
+        cbStudent.getStyleClass().add("combo-box");
+        for (Student s : studentsList) {
+            cbStudent.getItems().add(s.getId() + " - " + s.getName());
+        }
+        grid.add(lblStudent, 0, 2);
+        grid.add(cbStudent, 1, 2);
+
+        Label lblBatch = new Label("Batch ID:");
+        lblBatch.getStyleClass().add("form-label");
+        ComboBox<String> cbBatch = new ComboBox<>();
+        cbBatch.setPromptText("Select Batch");
+        cbBatch.setPrefWidth(220);
+        cbBatch.getStyleClass().add("combo-box");
+        for (Batch b : batchesList) {
+            cbBatch.getItems().add(b.getBatchId());
+        }
+        grid.add(lblBatch, 0, 3);
+        grid.add(cbBatch, 1, 3);
+
+        Label lblStatus = new Label("Status:");
+        lblStatus.getStyleClass().add("form-label");
+        ComboBox<String> cbStatus = new ComboBox<>();
+        cbStatus.getItems().addAll("Present", "Absent");
+        cbStatus.setValue("Present");
+        cbStatus.setPrefWidth(220);
+        cbStatus.getStyleClass().add("combo-box");
+        grid.add(lblStatus, 0, 4);
+        grid.add(cbStatus, 1, 4);
+
+        Label lblMarkedBy = new Label("Marked By:");
+        lblMarkedBy.getStyleClass().add("form-label");
+        TextField txtMarkedBy = new TextField(loggedInUser != null ? loggedInUser.getName() : "Admin");
+        txtMarkedBy.getStyleClass().add("text-input");
+        grid.add(lblMarkedBy, 0, 5);
+        grid.add(txtMarkedBy, 1, 5);
+
+        Label lblMarkedTime = new Label("Marked Time:");
+        lblMarkedTime.getStyleClass().add("form-label");
+        TextField txtMarkedTime = new TextField(
+                LocalTime.now().format(DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH)));
+        txtMarkedTime.getStyleClass().add("text-input");
+        grid.add(lblMarkedTime, 0, 6);
+        grid.add(txtMarkedTime, 1, 6);
+
+        Label lblCourse = new Label("Course ID:");
+        lblCourse.getStyleClass().add("form-label");
+        ComboBox<String> cbCourse = new ComboBox<>();
+        cbCourse.setPromptText("Select Course");
+        cbCourse.setPrefWidth(220);
+        cbCourse.getStyleClass().add("combo-box");
+        for (Course c : coursesList) {
+            cbCourse.getItems().add(c.getCourseId());
+        }
+        grid.add(lblCourse, 0, 7);
+        grid.add(cbCourse, 1, 7);
+
+        Label lblMsg = new Label();
+        lblMsg.setStyle("-fx-font-weight: bold;");
+
+        HBox btnBox = new HBox(8);
+        btnBox.setAlignment(Pos.CENTER);
+        btnBox.setPadding(new Insets(10, 0, 0, 0));
+
+        Button btnAdd = new Button("Add");
+        btnAdd.getStyleClass().addAll("btn", "btn-primary");
+
+        Button btnUpdate = new Button("Update");
+        btnUpdate.getStyleClass().addAll("btn", "btn-success");
+        btnUpdate.setDisable(true);
+
+        Button btnDelete = new Button("Delete");
+        btnDelete.getStyleClass().addAll("btn", "btn-danger");
+        btnDelete.setDisable(true);
+
+        Button btnClear = new Button("Clear");
+        btnClear.getStyleClass().addAll("btn", "btn-secondary");
+
+        Button btnClose = new Button("Close");
+        btnClose.getStyleClass().addAll("btn", "btn-secondary");
+        btnClose.setOnAction(e -> modalStage.close());
+
+        btnBox.getChildren().addAll(btnAdd, btnUpdate, btnDelete, btnClear, btnClose);
+
+        cbSelect.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                txtAttId.setText(newVal.getAttendanceId());
+                txtAttId.setEditable(false);
+                txtAttId.setDisable(true);
+                try {
+                    dpDate.setValue(LocalDate.parse(newVal.getDate(), DATE_FORMATTER));
+                } catch (Exception ex) {
+                    dpDate.setValue(LocalDate.now());
+                }
+
+                String studId = newVal.getStudentId();
+                cbStudent.setValue(null);
+                for (String item : cbStudent.getItems()) {
+                    if (item.startsWith(studId + " -") || item.equals(studId)) {
+                        cbStudent.setValue(item);
+                        break;
+                    }
+                }
+                if (cbStudent.getValue() == null) {
+                    cbStudent.setValue(studId);
+                }
+
+                cbBatch.setValue(newVal.getBatchId());
+                cbStatus.setValue(newVal.getStatus());
+                txtMarkedBy.setText(newVal.getMarkedBy());
+                txtMarkedTime.setText(newVal.getMarkedTime());
+                cbCourse.setValue(newVal.getCourseId());
+
+                btnAdd.setDisable(true);
+                btnUpdate.setDisable(false);
+                btnDelete.setDisable(false);
+            }
+        });
+
+        Runnable resetForm = () -> {
+            cbSelect.setValue(null);
+            txtAttId.clear();
+            txtAttId.setEditable(true);
+            txtAttId.setDisable(false);
+            dpDate.setValue(LocalDate.now());
+            cbStudent.setValue(null);
+            cbBatch.setValue(null);
+            cbCourse.setValue(null);
+            cbStatus.setValue("Present");
+            txtMarkedBy.setText(loggedInUser != null ? loggedInUser.getName() : "Admin");
+            txtMarkedTime.setText(LocalTime.now().format(DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH)));
+            btnAdd.setDisable(false);
+            btnUpdate.setDisable(true);
+            btnDelete.setDisable(true);
+            lblMsg.setText("");
+        };
+        btnClear.setOnAction(e -> resetForm.run());
+
+        btnAdd.setOnAction(e -> {
+            String aid = txtAttId.getText().trim();
+            LocalDate dt = dpDate.getValue();
+            String studVal = cbStudent.getValue();
+            String bid = cbBatch.getValue();
+            String stat = cbStatus.getValue();
+            String mby = txtMarkedBy.getText().trim();
+            String mtime = txtMarkedTime.getText().trim();
+            String cid = cbCourse.getValue();
+
+            if (aid.isEmpty() || dt == null || studVal == null || bid == null || stat == null || mby.isEmpty()
+                    || mtime.isEmpty() || cid == null) {
+                lblMsg.setText("All fields must be filled.");
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+                return;
+            }
+
+            String sid = studVal.contains(" - ") ? studVal.split(" - ")[0] : studVal.trim();
+            for (Attendance att : attendanceList) {
+                if (att.getAttendanceId().equalsIgnoreCase(aid)) {
+                    lblMsg.setText("Attendance ID already exists!");
+                    lblMsg.setStyle("-fx-text-fill: -danger-color;");
+                    return;
+                }
+            }
+
+            layout.setDisable(true);
+            lblMsg.setText("Adding attendance record...");
+            lblMsg.setStyle("-fx-text-fill: -primary-color;");
+
+            String dateStr = dt.format(DATE_FORMATTER);
+            Attendance newAtt = new Attendance(aid, dateStr, sid, bid, stat, mby, mtime, cid);
+
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    new GoogleSheetsService().addAttendance(newAtt);
+                    return null;
+                }
+            };
+            task.setOnSucceeded(evt -> {
+                layout.setDisable(false);
+                attendanceList.add(newAtt);
+                addActivity("➕", "Added attendance: " + aid + " (" + sid + " - " + stat + ")");
+                resetForm.run();
+                lblMsg.setText("Attendance added successfully.");
+                lblMsg.setStyle("-fx-text-fill: -success-color;");
+                refreshAttendanceData();
+            });
+            task.setOnFailed(evt -> {
+                layout.setDisable(false);
+                Throwable t = task.getException();
+                lblMsg.setText("Failed: " + t.getMessage());
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+            });
+            new Thread(task).start();
+        });
+
+        btnUpdate.setOnAction(e -> {
+            Attendance selected = cbSelect.getValue();
+            if (selected == null)
+                return;
+
+            LocalDate dt = dpDate.getValue();
+            String studVal = cbStudent.getValue();
+            String bid = cbBatch.getValue();
+            String stat = cbStatus.getValue();
+            String mby = txtMarkedBy.getText().trim();
+            String mtime = txtMarkedTime.getText().trim();
+            String cid = cbCourse.getValue();
+
+            if (dt == null || studVal == null || bid == null || stat == null || mby.isEmpty() || mtime.isEmpty()
+                    || cid == null) {
+                lblMsg.setText("All fields must be filled.");
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+                return;
+            }
+
+            String sid = studVal.contains(" - ") ? studVal.split(" - ")[0] : studVal.trim();
+            layout.setDisable(true);
+            lblMsg.setText("Updating attendance record...");
+            lblMsg.setStyle("-fx-text-fill: -primary-color;");
+
+            String dateStr = dt.format(DATE_FORMATTER);
+            Attendance updated = new Attendance(selected.getAttendanceId(), dateStr, sid, bid, stat, mby, mtime, cid);
+
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    new GoogleSheetsService().updateAttendance(updated);
+                    return null;
+                }
+            };
+            task.setOnSucceeded(evt -> {
+                layout.setDisable(false);
+                selected.setDate(dateStr);
+                selected.setStudentId(sid);
+                selected.setBatchId(bid);
+                selected.setStatus(stat);
+                selected.setMarkedBy(mby);
+                selected.setMarkedTime(mtime);
+                selected.setCourseId(cid);
+
+                addActivity("📝", "Updated attendance: " + selected.getAttendanceId());
+                resetForm.run();
+                lblMsg.setText("Attendance updated successfully.");
+                lblMsg.setStyle("-fx-text-fill: -success-color;");
+                refreshAttendanceData();
+            });
+            task.setOnFailed(evt -> {
+                layout.setDisable(false);
+                Throwable t = task.getException();
+                lblMsg.setText("Failed: " + t.getMessage());
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+            });
+            new Thread(task).start();
+        });
+
+        btnDelete.setOnAction(e -> {
+            Attendance selected = cbSelect.getValue();
+            if (selected == null)
+                return;
+
+            layout.setDisable(true);
+            lblMsg.setText("Deleting attendance record...");
+            lblMsg.setStyle("-fx-text-fill: -primary-color;");
+
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    new GoogleSheetsService().deleteAttendance(selected.getAttendanceId());
+                    return null;
+                }
+            };
+            task.setOnSucceeded(evt -> {
+                layout.setDisable(false);
+                attendanceList.remove(selected);
+                addActivity("❌", "Deleted attendance: " + selected.getAttendanceId());
+                resetForm.run();
+                lblMsg.setText("Attendance deleted successfully.");
+                lblMsg.setStyle("-fx-text-fill: -success-color;");
+                refreshAttendanceData();
+            });
+            task.setOnFailed(evt -> {
+                layout.setDisable(false);
+                Throwable t = task.getException();
+                lblMsg.setText("Failed: " + t.getMessage());
+                lblMsg.setStyle("-fx-text-fill: -danger-color;");
+            });
+            new Thread(task).start();
+        });
+
+        layout.getChildren().addAll(lblTitle, selectorRow, grid, lblMsg, btnBox);
+
+        Scene scene = new Scene(layout);
+        java.io.File cssFile = new java.io.File("styles.css");
+        if (cssFile.exists()) {
+            try {
+                scene.getStylesheets().add(cssFile.toURI().toURL().toExternalForm());
+            } catch (Exception ignored) {
+            }
+        }
+        modalStage.setScene(scene);
+        modalStage.setResizable(false);
+        modalStage.show();
     }
 
     private void openCoursesEditorModal() {
+
         Stage modalStage = new Stage();
         modalStage.initOwner(this.getScene().getWindow());
         modalStage.initModality(Modality.APPLICATION_MODAL);
